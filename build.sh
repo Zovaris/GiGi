@@ -2,7 +2,8 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
-VERSION="${1:-2.0}"
+SOURCE_VERSION="$(plutil -extract CFBundleShortVersionString raw Resources/Info.plist)"
+VERSION="${1:-$SOURCE_VERSION}"
 BUNDLE_ID="com.codebuff.gigi"
 
 CORE=(Sources/Core/*.swift)
@@ -24,7 +25,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/en.lproj" "$APP/Contents
 swiftc "${SWIFT_FLAGS[@]}" -framework AppKit -framework ServiceManagement \
   "${CORE[@]}" Sources/app/*.swift -o "$APP/Contents/MacOS/GiGi"
 
-sed "s|<string>2.0</string>|<string>$VERSION</string>|" Resources/Info.plist > "$APP/Contents/Info.plist"
+cp Resources/Info.plist "$APP/Contents/Info.plist"
+plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
 cp Resources/GiGi.icns "$APP/Contents/Resources/GiGi.icns"
 for lang in en es; do
   cp "Resources/$lang.lproj/Localizable.strings" "$APP/Contents/Resources/$lang.lproj/Localizable.strings"
@@ -32,7 +34,7 @@ done
 plutil -lint "$APP/Contents/Info.plist" > /dev/null
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(.*\)"/\1/p' | head -1 || true)"
+IDENTITY="${CODESIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(.*\)"/\1/p' | head -1 || true)}"
 if [ -n "$IDENTITY" ]; then
   echo "==> signing with: $IDENTITY"
   codesign --force --sign "$IDENTITY" --identifier "$BUNDLE_ID" "$APP" >/dev/null 2>&1 \
@@ -44,6 +46,7 @@ fi
 
 echo
 echo "OK"
+echo "  version: $VERSION"
 echo "  CLI: $(pwd)/bin/gigi"
 echo "  app: $(pwd)/$APP"
 echo
