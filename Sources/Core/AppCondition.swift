@@ -11,7 +11,7 @@ struct AppCondition: Codable {
     var apps: [SelectedApp] = []
 
     func allows(_ activity: AppActivity) -> Bool {
-        guard enabled else { return true }
+        guard enabled, !apps.isEmpty else { return true }
         let ids = Set(apps.map(\.id))
         if mode == "frontmost" {
             return activity.frontmost.map(ids.contains) ?? false
