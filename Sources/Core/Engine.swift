@@ -281,8 +281,13 @@ final class Engine {
         let status = status
         let deadlineText = status.deadline.map { logTimestampFormatter.string(from: $0) } ?? "-"
         let lastText = status.lastJiggle.map { logTimestampFormatter.string(from: $0) } ?? "-"
+        let state: String
+        if !status.running { state = "inactive" }
+        else if status.waitingForApp { state = "waiting-for-app" }
+        else if status.outOfSchedule { state = "out-of-schedule" }
+        else { state = "active" }
         return [
-            status.running ? (status.outOfSchedule ? "out-of-schedule" : "active") : "inactive",
+            state,
             "jiggles=\(status.jiggles)",
             "display=\(status.displayAssertion ? "kept-awake" : "normal")",
             "brightness=\(status.brightness.map { String(format: "%.2f", $0) } ?? "unknown")",
