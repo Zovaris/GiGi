@@ -71,6 +71,12 @@ final class PanelModel: ObservableObject {
     @Published var notificationsEnabled = true
     @Published var notificationsDenied = false
     var notificationsChanged: () -> Void = {}
+    @Published var version = BuildVersion.current
+    @Published var checkForUpdates = true
+    @Published var update: UpdateStatus = .idle
+    var checkForUpdatesChanged: () -> Void = {}
+    var checkForUpdatesNow: () -> Void = {}
+    var openReleasePage: () -> Void = {}
     @Published var appCondition = AppCondition()
     var appConditionChanged: () -> Void = {}
     var addApp: () -> Void = {}
@@ -890,10 +896,70 @@ struct PanelView: View {
                 }
                 .padding(.top, 8)
             }
+            Divider()
+            HStack {
+                Label(L("Version"), systemImage: "info.circle")
+                Spacer(minLength: 8)
+                Text(model.version)
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                Label(L("Check for updates automatically"), systemImage: "arrow.triangle.2.circlepath")
+                Spacer(minLength: 8)
+                Toggle(L("Check for updates automatically"), isOn: Binding(get: { model.checkForUpdates }, set: {
+                    model.checkForUpdates = $0
+                    model.checkForUpdatesChanged()
+                }))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .pointerCursor()
+            }
+            updateStatusRow
         }
         .pickerStyle(.menu)
         .font(.subheadline)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private var updateStatusRow: some View {
+        switch model.update {
+        case .idle:
+            settingsAction("Check now", symbol: "arrow.down.circle", action: model.checkForUpdatesNow)
+        case .checking:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(L("Checking for updates…")).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+        case .upToDate:
+            HStack {
+                Label(L("GiGi is up to date"), systemImage: "checkmark.circle")
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+            }
+        case .available(let version):
+            HStack(spacing: 8) {
+                Label(String(format: L("GiGi %@ is available"), version), systemImage: "gift")
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
+                Button(L("View release"), action: model.openReleasePage)
+                    .controlSize(.small)
+                    .pointerCursor()
+            }
+        case .failed(let reason):
+            HStack(spacing: 8) {
+                Label(reason, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 8)
+                Button(L("Check now"), action: model.checkForUpdatesNow)
+                    .controlSize(.small)
+                    .pointerCursor()
+            }
+        }
     }
 
     private func settingsAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {

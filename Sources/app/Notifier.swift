@@ -57,6 +57,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         case .missingAccessibility:
             content.title = L("GiGi needs Accessibility permission")
             content.body = L("Grant it in System Settings > Privacy & Security > Accessibility.")
+        case .updateAvailable(let version):
+            content.title = String(format: L("GiGi %@ is available"), version)
+            content.body = L("Open Settings in the panel to see the release page.")
         }
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request) { error in

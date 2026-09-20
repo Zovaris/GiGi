@@ -192,3 +192,21 @@
 "GiGi needs Accessibility permission" = "GiGi necesita permiso de Accesibilidad";
 
 "Grant it in System Settings > Privacy & Security > Accessibility." = "Concedelo en Ajustes del Sistema > Privacidad y seguridad > Accesibilidad.";
+
+"Version" = "Versión";
+
+"Check for updates automatically" = "Buscar actualizaciones solo";
+
+"Check now" = "Buscar ahora";
+
+"Checking for updates…" = "Buscando actualizaciones…";
+
+"GiGi is up to date" = "GiGi está al día";
+
+"GiGi %@ is available" = "GiGi %@ está disponible";
+
+"View release" = "Ver la versión";
+
+"Check for updates…" = "Buscar actualizaciones…";
+
+"Open Settings in the panel to see the release page." = "Abrí Ajustes en el panel para ver la página de la versión.";

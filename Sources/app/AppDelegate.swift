@@ -10,6 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let engine: Engine
     private let notifier = Notifier()
     private let server = ControlServer()
+    private let updateChecker = UpdateChecker()
+    private var checkingUpdate = false
+    private var pendingRelease: UpdateRelease?
     private let defaults = UserDefaults.standard
     private var timer: Timer?
     private let panel = PanelModel()
@@ -97,6 +100,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self?.handle(request) ?? "error: app unavailable"
             }
         }
+
+        scheduleUpdateCheck()
 
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self else { return }
@@ -252,6 +257,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         openAccessibilitySettings()
     }
 
+    @objc private func checkForUpdatesFromMenu() {
+        checkForUpdates(manual: true)
+    }
+
     @objc private func openConfigFolder() {
         let url = defaultConfigURL().deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
@@ -376,6 +385,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                        action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         launchAtLoginItem.target = self
         menu.addItem(launchAtLoginItem)
+
+        menu.addItem(.separator())
+
+        let updateItem = NSMenuItem(title: L("Check for updates…"),
+                                    action: #selector(checkForUpdatesFromMenu), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
 
         menu.addItem(.separator())
 
@@ -532,6 +548,9 @@ private extension AppDelegate {
         panel.dimPreview = { [weak self] in self?.previewPanelDim() }
         panel.dimChanged = { [weak self] in self?.applyPanelDim() }
         panel.notificationsChanged = { [weak self] in self?.applyPanelNotifications() }
+        panel.checkForUpdatesChanged = { [weak self] in self?.applyPanelUpdatePref() }
+        panel.checkForUpdatesNow = { [weak self] in self?.checkForUpdates(manual: true) }
+        panel.openReleasePage = { [weak self] in self?.openReleasePage() }
         panel.appConditionChanged = { [weak self] in self?.applyPanelAppCondition() }
         panel.addApp = { [weak self] in self?.chooseApps() }
         panel.batteryChanged = { [weak self] in self?.applyPanelBattery() }
@@ -565,6 +584,8 @@ private extension AppDelegate {
         panel.dimBrightness = engine.config.dimBrightness
         panel.appCondition = engine.config.appCondition
         panel.notificationsEnabled = engine.config.notificationsEnabled
+        panel.checkForUpdates = engine.config.checkForUpdates
+        panel.version = BuildVersion.current
         panel.batteryLimitEnabled = engine.config.batteryLimitEnabled
         panel.batteryLimitPercent = engine.config.batteryLimitPercent
         let schedule = engine.config.schedule
@@ -576,6 +597,67 @@ private extension AppDelegate {
         panel.scheduleEnd = date(fromHM: window.end) ?? date(fromHM: "18:00") ?? Date()
         panel.hotkey = engine.config.hotkey
         panel.hotkeyDisplay = HotkeyCenter.shared.registered?.display ?? ""
+    }
+
+    private func scheduleUpdateCheck() {
+        panel.version = BuildVersion.current
+        panel.checkForUpdates = engine.config.checkForUpdates
+        guard engine.config.checkForUpdates else { return }
+        if let last = defaults.object(forKey: "lastUpdateCheck") as? Date,
+           Date().timeIntervalSince(last) < 24 * 3600 {
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
+            self?.checkForUpdates(manual: false)
+        }
+    }
+
+    private func checkForUpdates(manual: Bool) {
+        guard !checkingUpdate else { return }
+        checkingUpdate = true
+        panel.update = .checking
+        let current = BuildVersion.current
+        Log.info("update: checking (running \(current))")
+        updateChecker.check(current: current) { [weak self] result in
+            guard let self else { return }
+            self.checkingUpdate = false
+            self.defaults.set(Date(), forKey: "lastUpdateCheck")
+            switch result {
+            case .upToDate(let version):
+                Log.info("update: \(version) is the latest")
+                self.panel.update = .upToDate
+            case .available(let release):
+                Log.info("update: \(release.version) is available (\(release.pageURL))")
+                self.pendingRelease = release
+                self.panel.update = .available(release.version)
+                if !manual { self.engine.notices.offer(.updateAvailable(version: release.version)) }
+            case .failed(let reason):
+                Log.error("update: \(reason)")
+                self.panel.update = manual ? .failed(reason) : .idle
+            }
+        }
+    }
+
+    private func applyPanelUpdatePref() {
+        var config = engine.config
+        config.checkForUpdates = panel.checkForUpdates
+        engine.apply(config: config)
+        if !saveConfig(config, path: AppDelegate.configPathFromArguments()) {
+            panel.error = L("Could not write the configuration file")
+        }
+        if panel.checkForUpdates {
+            checkForUpdates(manual: true)
+        } else {
+            panel.update = .idle
+        }
+        refresh()
+    }
+
+    private func openReleasePage() {
+        guard let address = pendingRelease?.pageURL ?? URL(string: "https://github.com/\(UpdateFeed.repository)/releases")?.absoluteString,
+              let url = URL(string: address) else { return }
+        Log.info("update: opening \(address)")
+        NSWorkspace.shared.open(url)
     }
 
     private func configureHotkey() {

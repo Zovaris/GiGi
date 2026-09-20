@@ -4,6 +4,7 @@ enum Notice: Equatable {
     case timerExpired
     case batteryStop(percent: Int, limit: Int)
     case missingAccessibility
+    case updateAvailable(version: String)
 }
 
 extension Notice {
@@ -12,13 +13,14 @@ extension Notice {
         case .timerExpired: return "timer-expired"
         case .batteryStop: return "battery-stop"
         case .missingAccessibility: return "missing-accessibility"
+        case .updateAvailable(let version): return "update-available-\(version)"
         }
     }
 
     var oncePerRun: Bool {
         switch self {
         case .missingAccessibility: return true
-        case .timerExpired, .batteryStop: return false
+        case .timerExpired, .batteryStop, .updateAvailable: return false
         }
     }
 }
