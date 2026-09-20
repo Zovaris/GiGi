@@ -20,7 +20,9 @@ func usage() {
       --config PATH           config JSON (default ~/.config/gigi/config.json)
       --interval-min S        minimum seconds between moves (default 45)
       --interval-max S        maximum seconds between moves (default 90)
-      --distance PX           cursor offset in pixels (default 2)
+      --distance PX           cursor offset in pixels for the jiggle (default 2)
+      --pattern NAME          cursor path: jiggle|circle|square|figureEight (default jiggle)
+      --radius PX             size of the drawn path, 2-300 (default 40)
       --idle-threshold S      only move when the user has been idle for S seconds (default 40)
       --click MODE            extra click per move: none|single|double|right
       --scroll MODE           extra scroll per move: none|ping|down|up
@@ -44,6 +46,8 @@ struct Options {
     var intervalMin: Double?
     var intervalMax: Double?
     var distance: Double?
+    var pattern: String?
+    var radius: Double?
     var idleThreshold: Double?
     var click: String?
     var scroll: String?
@@ -86,6 +90,10 @@ func parseOptions(_ args: [String]) -> Options {
             options.intervalMax = nextValue("--interval-max").flatMap(Double.init)
         case "--distance":
             options.distance = nextValue("--distance").flatMap(Double.init)
+        case "--pattern":
+            options.pattern = nextValue("--pattern")
+        case "--radius":
+            options.radius = nextValue("--radius").flatMap(Double.init)
         case "--idle-threshold":
             options.idleThreshold = nextValue("--idle-threshold").flatMap(Double.init)
         case "--click":
@@ -131,11 +139,22 @@ func parseOptions(_ args: [String]) -> Options {
     return options
 }
 
+func resolvedPattern(_ options: Options) -> String {
+    guard let pattern = options.pattern else { return Motion.defaultPattern }
+    guard Motion.patterns.contains(pattern) else {
+        Log.error("--pattern must be one of: \(Motion.patterns.joined(separator: ", "))")
+        exit(2)
+    }
+    return pattern
+}
+
 func makeEngine(_ options: Options) -> Engine {
     var config = loadConfig(path: options.configPath)
     if let value = options.intervalMin { config.intervalSeconds[0] = value }
     if let value = options.intervalMax { config.intervalSeconds[1] = value }
     if let value = options.distance { config.jiggleDistancePixels = value }
+    config.motionPattern = resolvedPattern(options)
+    if let value = options.radius { config.motionRadiusPixels = Motion.clampRadius(value) }
     if let value = options.idleThreshold { config.idleThresholdSeconds = value }
     if let value = options.click { config.clickMode = value }
     if let value = options.scroll { config.scrollMode = value }
@@ -178,9 +197,11 @@ func runProbe(_ options: Options) {
                  before, beforeKernel.map { String(format: "%.1f s", $0) } ?? "n/a"))
 
     let distance = options.distance ?? Config.default.jiggleDistancePixels
+    let radius = options.radius.map(Motion.clampRadius) ?? Config.default.motionRadiusPixels
     let sourceName = options.source == .privateState ? "privateState" : "nil (system)"
-    Log.info("posting mouseMoved (+\(distance)px and back) with source=\(sourceName)")
-    guard jiggle(distance: distance, stateID: options.source) else { return }
+    Log.info("posting \(resolvedPattern(options)) (distance \(distance)px, radius \(radius)px) with source=\(sourceName)")
+    guard simulateMotion(pattern: resolvedPattern(options), distance: distance, radius: radius,
+                         stateID: options.source) else { return }
     Thread.sleep(forTimeInterval: 0.4)
 
     let after = userIdleSeconds()
@@ -196,7 +217,8 @@ func runOnce(_ options: Options) {
         Log.error("could not move the cursor (Accessibility permission?)")
         exit(1)
     }
-    Log.info("single move of \(engine.config.jiggleDistancePixels)px sent")
+    Log.info("single move sent: \(engine.config.motionPattern) at \(engine.config.jiggleDistancePixels)px"
+             + (engine.config.motionPattern == Motion.defaultPattern ? "" : ", radius \(Int(engine.config.motionRadiusPixels))px"))
 }
 
 var stopRequested = false
@@ -236,7 +258,8 @@ func runLoop(_ options: Options) {
     }
 
     Log.info("starting daemon: interval \(Int(config.intervalSeconds[0]))-\(Int(config.intervalSeconds[1]))s, "
-             + "distance \(config.jiggleDistancePixels)px, idle>\(Int(config.idleThresholdSeconds))s, "
+             + "pattern \(config.motionPattern), distance \(config.jiggleDistancePixels)px, "
+             + "radius \(Int(config.motionRadiusPixels))px, idle>\(Int(config.idleThresholdSeconds))s, "
              + "clicks \(config.clickMode), scroll \(config.scrollMode), "
              + "dim \(config.dimWhileActive ? "\(Int(config.dimBrightness * 100))%" : "off"), "
              + "schedule \(engine.mode == .always ? "ignored" : (config.schedule.enabled ? "ON" : "OFF"))")
