@@ -9,6 +9,27 @@ func parseHM(_ raw: String) -> (h: Int, m: Int)? {
 
 let weekdayNames = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
 
+let timeFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "HH:mm"
+    return formatter
+}()
+
+func timeString(from date: Date) -> String {
+    timeFormatter.string(from: date)
+}
+
+func date(fromHM raw: String, on day: Date = Date()) -> Date? {
+    guard let hm = parseHM(raw) else { return nil }
+    let calendar = Calendar.current
+    var comps = calendar.dateComponents([.year, .month, .day], from: day)
+    comps.hour = hm.h
+    comps.minute = hm.m
+    comps.second = 0
+    return calendar.date(from: comps)
+}
+
 extension Schedule {
     func allows(_ date: Date) -> Bool {
         guard enabled, !windows.isEmpty else { return true }
@@ -54,13 +75,7 @@ extension Schedule {
 }
 
 func nextOccurrence(ofHM raw: String, after now: Date) -> Date? {
-    guard let hm = parseHM(raw) else { return nil }
-    let calendar = Calendar.current
-    var comps = calendar.dateComponents([.year, .month, .day], from: now)
-    comps.hour = hm.h
-    comps.minute = hm.m
-    comps.second = 0
-    guard let today = calendar.date(from: comps) else { return nil }
+    guard let today = date(fromHM: raw, on: now) else { return nil }
     if today > now { return today }
-    return calendar.date(byAdding: .day, value: 1, to: today)
+    return Calendar.current.date(byAdding: .day, value: 1, to: today)
 }

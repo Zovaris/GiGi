@@ -43,6 +43,25 @@ struct TimerTests {
         assert(repaired.scrollMode == "none", "an unknown scroll mode falls back to none")
         assert(repaired.hotkey == Config.default.hotkey, "an unparsable shortcut falls back to the default")
 
+        var messy = Config.default
+        messy.schedule.days = ["MON", "mon", "fry", "sun"]
+        assert(messy.sanitized().schedule.days == ["sun", "mon"],
+               "day names are lowercased, deduplicated and put in week order")
+
+        for raw in ["09:00", "00:00", "23:59", "7:05"] {
+            guard let date = date(fromHM: raw) else {
+                assertionFailure("\(raw) must parse into a date")
+                continue
+            }
+            let formatted = timeString(from: date)
+            assert(parseHM(formatted) != nil, "\(raw) must format back into a parsable time")
+            assert(formatted == String(format: "%02d:%02d", parseHM(raw)!.h, parseHM(raw)!.m),
+                   "\(raw) must round-trip through the config format")
+        }
+        assert(date(fromHM: "24:00") == nil, "an out-of-range hour must not parse")
+        assert(date(fromHM: "9h00") == nil, "a malformed time must not parse")
+        assert(timeString(from: date(fromHM: "18:30")!) == "18:30", "the formatter keeps the 24 hour shape")
+
         var level = 0.8
         var written: [Double] = []
         let fake = Brightness(

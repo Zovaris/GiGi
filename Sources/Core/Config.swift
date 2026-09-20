@@ -1,11 +1,11 @@
 import Foundation
 
-struct ScheduleWindow: Codable {
+struct ScheduleWindow: Codable, Equatable {
     var start: String
     var end: String
 }
 
-struct Schedule: Codable {
+struct Schedule: Codable, Equatable {
     var enabled: Bool
     var days: [String]
     var windows: [ScheduleWindow]
@@ -60,6 +60,8 @@ struct Config: Codable {
         if config.hotkey != Hotkey.disabledName && Hotkey.parse(config.hotkey) == nil {
             config.hotkey = Config.default.hotkey
         }
+        let selected = Set(config.schedule.days.map { $0.lowercased() })
+        config.schedule.days = weekdayNames.filter { selected.contains($0) }
         return config
     }
 }
