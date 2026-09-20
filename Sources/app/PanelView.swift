@@ -220,6 +220,7 @@ struct PanelView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(String(format: L("%d movements"), model.status.jiggles))
                     .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
                 if let idle = model.status.lastIdle {
                     Text(String(format: L("Idle %.0fs"), idle)).font(.caption2).foregroundStyle(.secondary)
                 }
@@ -237,6 +238,7 @@ struct PanelView: View {
                 Image(systemName: "ellipsis")
             }
             .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
             .frame(width: 24)
         }
         .padding(.horizontal, 14)
@@ -252,7 +254,8 @@ struct PanelView: View {
 
 private extension View {
     func cardStyle() -> some View {
-        padding(12)
+        frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
             .background(.quaternary.opacity(0.34), in: RoundedRectangle(cornerRadius: 12))
     }
 }
