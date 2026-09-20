@@ -14,6 +14,8 @@ final class Engine {
         var lastJiggle: Date?
         var lastIdle: Double?
         var displayAssertion: Bool = false
+        var dimmed: Bool = false
+        var brightness: Double?
         var outOfSchedule: Bool = false
         var deadline: Date?
         var nextTransition: Date?
@@ -22,6 +24,7 @@ final class Engine {
 
     private(set) var config: Config
     private let power = PowerAssertions()
+    var brightness: Brightness = .system
 
     var mode: Mode = .schedule
     var eventSource: CGEventSourceStateID?
@@ -38,6 +41,8 @@ final class Engine {
     private var lastCursor: CGPoint?
     private var moveStreak = 0
     private var warnedAboutAccessibility = false
+    private var restoreBrightness: Double?
+    private var appliedBrightness: Double?
 
     init(config: Config) {
         self.config = config
@@ -59,6 +64,7 @@ final class Engine {
         running = false
         power.stopDisplayAssertion()
         windowActive = false
+        syncBrightness()
         Log.info("engine: OFF (\(reason))")
         onStatusChange?()
     }
@@ -85,6 +91,14 @@ final class Engine {
         } else if running && windowActive {
             power.startDisplayAssertion()
         }
+        syncBrightness()
+        onStatusChange?()
+    }
+
+    func setDim(enabled: Bool, brightness level: Double) {
+        config.dimWhileActive = enabled
+        config.dimBrightness = min(1, max(0.05, level.isFinite ? level : Config.default.dimBrightness))
+        syncBrightness()
         onStatusChange?()
     }
 
@@ -95,6 +109,7 @@ final class Engine {
             wakeOnWindowStart = newConfig.wakeDisplayOnWindowStart
         }
         if !running { power.stopDisplayAssertion() }
+        syncBrightness()
         Log.info("engine: config applied (interval \(Int(config.intervalSeconds[0]))-\(Int(config.intervalSeconds[1]))s)")
         onStatusChange?()
     }
@@ -134,6 +149,7 @@ final class Engine {
                 Log.info("engine: outside schedule window, releasing assertion")
                 power.stopDisplayAssertion()
             }
+            syncBrightness()
             onStatusChange?()
         }
 
@@ -166,6 +182,37 @@ final class Engine {
         return true
     }
 
+    private func syncBrightness() {
+        guard config.dimWhileActive, running, windowActive, preventDisplaySleep else {
+            releaseBrightness()
+            return
+        }
+        if restoreBrightness == nil { restoreBrightness = brightness.current() }
+        let target = min(1, max(0.05, config.dimBrightness))
+        if let applied = appliedBrightness, abs(applied - target) < 0.005 { return }
+        guard brightness.set(target) else {
+            appliedBrightness = nil
+            restoreBrightness = nil
+            Log.error("display: brightness is not controllable on this Mac")
+            return
+        }
+        appliedBrightness = target
+        Log.info(String(format: "display: brightness set to %.0f%% while the engine is active", target * 100))
+    }
+
+    private func releaseBrightness() {
+        guard let original = restoreBrightness else { return }
+        let applied = appliedBrightness
+        restoreBrightness = nil
+        appliedBrightness = nil
+        if let applied, let current = brightness.current(), abs(current - applied) > 0.02 {
+            Log.info("display: brightness left where it was set by hand")
+            return
+        }
+        guard brightness.set(original) else { return }
+        Log.info(String(format: "display: brightness restored to %.0f%%", original * 100))
+    }
+
     private func postExtraActivity() {
         if config.clickMode != "none", clickMouse(config.clickMode, stateID: eventSource) {
             Log.info("activity: click \(config.clickMode) at the current pointer position")
@@ -194,6 +241,8 @@ final class Engine {
             lastJiggle: lastJiggle,
             lastIdle: lastIdle,
             displayAssertion: power.hasDisplayAssertion,
+            dimmed: appliedBrightness != nil,
+            brightness: brightness.current(),
             outOfSchedule: running && mode == .schedule && !config.schedule.allows(Date()),
             deadline: deadline,
             nextTransition: config.schedule.nextTransition(after: Date()),
@@ -216,6 +265,8 @@ final class Engine {
             status.running ? (status.outOfSchedule ? "out-of-schedule" : "active") : "inactive",
             "jiggles=\(status.jiggles)",
             "display=\(status.displayAssertion ? "kept-awake" : "normal")",
+            "brightness=\(status.brightness.map { String(format: "%.2f", $0) } ?? "unknown")",
+            "dim=\(status.dimmed ? String(format: "%.2f", config.dimBrightness) : "off")",
             "last=\(lastText)",
             "timer=\(deadlineText)",
             "accessibility=\(status.accessibilityTrusted ? "ok" : "missing")",

@@ -19,6 +19,8 @@ struct Config: Codable {
     var wakeDisplayOnWindowStart: Bool
     var clickMode: String
     var scrollMode: String
+    var dimWhileActive: Bool
+    var dimBrightness: Double
     var hotkey: String
     var schedule: Schedule
 
@@ -33,6 +35,8 @@ struct Config: Codable {
         wakeDisplayOnWindowStart: true,
         clickMode: "none",
         scrollMode: "none",
+        dimWhileActive: false,
+        dimBrightness: 0.35,
         hotkey: Hotkey.default.config,
         schedule: Schedule(
             enabled: false,
@@ -52,6 +56,7 @@ struct Config: Codable {
         config.idleThresholdSeconds = max(0, config.idleThresholdSeconds)
         if !Config.clickModes.contains(config.clickMode) { config.clickMode = "none" }
         if !Config.scrollModes.contains(config.scrollMode) { config.scrollMode = "none" }
+        config.dimBrightness = min(1, max(0.05, config.dimBrightness.isFinite ? config.dimBrightness : 0.35))
         if config.hotkey != Hotkey.disabledName && Hotkey.parse(config.hotkey) == nil {
             config.hotkey = Config.default.hotkey
         }
@@ -70,6 +75,8 @@ extension Config {
         wakeDisplayOnWindowStart = try container.decodeIfPresent(Bool.self, forKey: .wakeDisplayOnWindowStart) ?? fallback.wakeDisplayOnWindowStart
         clickMode = try container.decodeIfPresent(String.self, forKey: .clickMode) ?? fallback.clickMode
         scrollMode = try container.decodeIfPresent(String.self, forKey: .scrollMode) ?? fallback.scrollMode
+        dimWhileActive = try container.decodeIfPresent(Bool.self, forKey: .dimWhileActive) ?? fallback.dimWhileActive
+        dimBrightness = try container.decodeIfPresent(Double.self, forKey: .dimBrightness) ?? fallback.dimBrightness
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? fallback.hotkey
         schedule = try container.decodeIfPresent(Schedule.self, forKey: .schedule) ?? fallback.schedule
     }

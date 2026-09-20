@@ -43,6 +43,49 @@ struct TimerTests {
         assert(repaired.scrollMode == "none", "an unknown scroll mode falls back to none")
         assert(repaired.hotkey == Config.default.hotkey, "an unparsable shortcut falls back to the default")
 
+        var level = 0.8
+        var written: [Double] = []
+        let fake = Brightness(
+            read: { _ in level },
+            write: { _, value in level = value; written.append(value); return true }
+        )
+        var dimConfig = Config.default
+        dimConfig.dimWhileActive = true
+        dimConfig.dimBrightness = 0.3
+        dimConfig.idleThresholdSeconds = 1e9
+        let dimmer = Engine(config: dimConfig)
+        dimmer.brightness = fake
+        dimmer.mode = .always
+        dimmer.start(reason: "brightness test")
+        assert(dimmer.tick(), "the engine must keep running while dimming")
+        assert(written == [0.3], "an active engine dims the display to the configured level")
+        assert(dimmer.status.dimmed, "the status must report the display as dimmed")
+        assert(dimmer.tick(), "a second tick must not rewrite the same brightness")
+        assert(written == [0.3], "the brightness is written once per change, not on every tick")
+        dimmer.stop(reason: "brightness test")
+        assert(written == [0.3, 0.8], "stopping restores the brightness captured before dimming")
+        assert(!dimmer.status.dimmed, "a stopped engine is not dimming anything")
+
+        level = 0.8
+        written = []
+        dimmer.start(reason: "brightness test")
+        assert(dimmer.tick(), "the engine must keep running while dimming")
+        level = 0.55
+        dimmer.stop(reason: "brightness test")
+        assert(written == [0.3], "a brightness changed by hand is left alone when the engine stops")
+
+        level = 0.8
+        written = []
+        var noAssert = dimConfig
+        noAssert.preventDisplaySleep = false
+        let bare = Engine(config: noAssert)
+        bare.brightness = fake
+        bare.mode = .always
+        bare.start(reason: "brightness test")
+        assert(bare.tick(), "the engine must keep running without the display assertion")
+        assert(written.isEmpty, "nothing is dimmed when GiGi does not keep the display awake")
+        bare.stop(reason: "brightness test")
+
         if let level = Brightness.system.current() {
             assert((0...1).contains(level), "a readable brightness must sit inside 0...1")
             assert(Brightness.system.isSupported, "a readable brightness means the display is controllable")
