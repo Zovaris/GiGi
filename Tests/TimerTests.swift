@@ -105,6 +105,26 @@ struct TimerTests {
         assert(written.isEmpty, "nothing is dimmed when GiGi does not keep the display awake")
         bare.stop(reason: "brightness test")
 
+        var gated = Config.default
+        gated.schedule = Schedule(enabled: true, days: weekdayNames,
+                                  windows: [ScheduleWindow(start: "09:00", end: "10:00")])
+        gated.idleThresholdSeconds = 1e9
+        let noon = date(fromHM: "12:00")!
+        let gatedEngine = Engine(config: gated)
+        gatedEngine.start(reason: "schedule test")
+        assert(gatedEngine.tick(now: noon), "the engine must keep running outside its window")
+        assert(!gatedEngine.status.displayAssertion, "outside the window the display assertion is released")
+        gatedEngine.mode = .always
+        assert(gatedEngine.tick(now: noon), "the engine must keep running while Mode is Always")
+        assert(gatedEngine.status.displayAssertion, "Mode Always ignores the window and keeps the display awake")
+        gatedEngine.stop(reason: "schedule test")
+
+        var ungated = Config.default
+        ungated.schedule.enabled = false
+        ungated.schedule.windows = [ScheduleWindow(start: "09:00", end: "10:00")]
+        assert(ungated.schedule.allows(noon), "a disabled schedule allows every hour")
+        assert(gated.schedule.allows(noon) == false, "an enabled schedule keeps its hours")
+
         if let level = Brightness.system.current() {
             assert((0...1).contains(level), "a readable brightness must sit inside 0...1")
             assert(Brightness.system.isSupported, "a readable brightness means the display is controllable")
