@@ -40,6 +40,14 @@ Grant Accessibility to `GiGi.app` or `bin/gigi`, depending on which one you use:
 The LaunchAgent logs to `~/Library/Logs/GiGi/`. The app and daemon should not run together;
 the CLI prevents duplicate engines unless `--force` is used.
 
+```bash
+make build      # the same as ./build.sh
+make test       # compile and run the test harness
+make strings    # lint the Info.plist and the localization tables
+make check      # build, test and lint: what CI runs on every pull request
+make icon       # redraw Resources/GiGi.icns
+```
+
 ## Usage
 
 Click GiGi in the menu bar to open its control panel. The main switch starts or stops
@@ -179,9 +187,29 @@ Windows can cross midnight, for example `{ "start": "22:00", "end": "06:00" }`. 
 the first window and keeps any others, showing a note when the file holds more than one. Reload
 the app with `./bin/gigi reload`; restart the LaunchAgent after editing its config.
 
+## Releasing
+
+`Resources/Info.plist` holds the version, and `make version` raises it, commits, tags `vX.Y.Z`
+and pushes both, so the tag always carries the version the app reports:
+
+```bash
+make version                 # 2.0.0 -> 2.0.1
+make version BUMP=minor      # -> 2.1.0
+make version VERSION=3.0.0   # pick the number yourself
+make version DRY=1           # print the plan and change nothing
+make version NO_PUSH=1       # commit and tag locally only
+```
+
+The release workflow runs on the tag: it checks the tag against the Info.plist, runs `make check`,
+builds, packages `GiGi-<version>-macos-<arch>.zip` next to its SHA-256, verifies the signature of
+the bundle inside the archive and publishes the GitHub release with the commits since the last tag.
+The bundle is ad-hoc signed, so Gatekeeper asks for a right-click → **Open** the first time.
+
 ## Architecture
 
 - `Sources/Core`: engine, schedule, power assertion, cursor events, brightness, notices, IPC, and logging.
+- `Tests`: the harness that `make test` compiles against the core.
+- `tools`: the icon generator, the localization lint and the release script.
 - `Sources/app`: AppKit menu bar and SwiftUI control panel.
 - `Sources/cli`: CLI and LaunchAgent frontend.
 - `Resources`: bundle metadata, icon, and localizations.
