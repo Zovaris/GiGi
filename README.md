@@ -28,6 +28,12 @@ features share the same Swift engine and schedule.
 Requires macOS 13+ and Xcode Command Line Tools.
 
 ```bash
+brew install --cask zovaris/tap/gigi   # GiGi.app plus the gigi CLI
+```
+
+Or build it yourself and install either the menu bar app or the LaunchAgent daemon:
+
+```bash
 ./build.sh              # creates bin/gigi and app/GiGi.app
 ./install.sh --app      # installs and opens the menu bar app
 ./install.sh            # installs the CLI as a LaunchAgent
@@ -39,6 +45,10 @@ Grant Accessibility to `GiGi.app` or `bin/gigi`, depending on which one you use:
 
 The LaunchAgent logs to `~/Library/Logs/GiGi/`. The app and daemon should not run together;
 the CLI prevents duplicate engines unless `--force` is used.
+
+A bundle unzipped from the release page is quarantined like any other download: right-click →
+**Open** the first time, or run `xattr -dr com.apple.quarantine GiGi.app`. The Homebrew cask clears
+that attribute itself, including for the CLI it links into your `PATH`.
 
 ```bash
 make build      # the same as ./build.sh
