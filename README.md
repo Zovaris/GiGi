@@ -80,8 +80,10 @@ fixed size instead of growing and pushing the footer around. The drawer header r
 section name and closes with the ✕, the Escape key, or the *Movement*/*Settings* row closing
 behind it. Right-click the menu bar icon for the original command menu and recent activity.
 
-The **Movement** drawer sets how long GiGi waits for you to go idle and how often it moves;
-**Apply movement** writes both back to the JSON configuration and applies them immediately.
+The **Movement** drawer sets how long GiGi waits for you to go idle, how often it moves, and the
+**Pattern** the cursor follows: a *Jiggle* nudge, or a *Circle*, *Square* or *Figure eight* of the
+**Radius** you choose. Every pattern returns the cursor to where it started before the move, and
+the numbers apply as soon as you leave the field, press Return, or click **Apply movement**.
 The **Settings** drawer holds Start at login, display wakefulness and dimming, the global
 **Shortcut**, Language, Appearance, Open log and, under **Advanced**, reload and open the
 configuration folder. The **Shortcut** row in there
@@ -137,7 +139,9 @@ Useful options for `run`, `once`, and `probe`:
 --config PATH             config file (default ~/.config/gigi/config.json)
 --interval-min SECONDS    minimum delay between movements
 --interval-max SECONDS    maximum delay between movements
---distance PIXELS         cursor movement distance
+--distance PIXELS         cursor movement distance for the jiggle
+--pattern NAME            cursor path: jiggle|circle|square|figureEight
+--radius PIXELS           size of the drawn path, 2-300
 --idle-threshold SECONDS  minimum idle time before moving
 --until HH:MM             stop at a time
 --duration MINUTES        stop after a duration
@@ -160,6 +164,8 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
   "intervalSeconds": [45, 90],
   "idleThresholdSeconds": 40,
   "jiggleDistancePixels": 2,
+  "motionPattern": "jiggle",
+  "motionRadiusPixels": 40,
   "preventDisplaySleep": true,
   "wakeDisplayOnWindowStart": true,
   "clickMode": "none",
@@ -176,7 +182,10 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
 }
 ```
 
-`clickMode` accepts `none`, `single`, `double`, and `right`; `scrollMode` accepts `none`, `ping`,
+`motionPattern` picks the path the cursor follows on every movement: `jiggle` (the default nudge of
+`jiggleDistancePixels` px and back), `circle`, `square`, or `figureEight`, which draw a path of
+`motionRadiusPixels` px and always return the cursor to where it started. The radius accepts
+`2`–`300`; `clickMode` accepts `none`, `single`, `double`, and `right`; `scrollMode` accepts `none`, `ping`,
 `down`, and `up`; `dimBrightness` is a level between `0.05` and `1`; `notificationsEnabled`
 turns the system notifications off without touching the rest; `hotkey` is a combination
 such as `ctrl+cmd+j`, `opt+shift+f9`, or `none`. Keys

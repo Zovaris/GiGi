@@ -2,6 +2,8 @@
   "intervalSeconds": [45, 90],
   "idleThresholdSeconds": 40,
   "jiggleDistancePixels": 2,
+  "motionPattern": "jiggle",
+  "motionRadiusPixels": 40,
   "preventDisplaySleep": true,
   "wakeDisplayOnWindowStart": true,
   "clickMode": "none",
@@ -12,6 +14,11 @@
   "batteryLimitPercent": 20,
   "notificationsEnabled": true,
   "hotkey": "ctrl+cmd+j",
+  "appCondition": {
+    "enabled": false,
+    "mode": "running",
+    "apps": []
+  },
   "schedule": {
     "enabled": true,
     "days": ["mon", "tue", "wed", "thu", "fri"],
