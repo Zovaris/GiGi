@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PROJECT="Zovaris/GiGi"
-TAP="Zovaris/homebrew-tap"
+TAP="sthbryan/homebrew-tap"
 CASK="Casks/gigi.rb"
 
 version="$(plutil -extract CFBundleShortVersionString raw Resources/Info.plist)"

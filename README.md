@@ -28,7 +28,7 @@ features share the same Swift engine and schedule.
 Requires macOS 13+ and Xcode Command Line Tools.
 
 ```bash
-brew install --cask zovaris/tap/gigi   # GiGi.app plus the gigi CLI
+brew install --cask sthbryan/tap/gigi   # GiGi.app plus the gigi CLI
 ```
 
 Or build it yourself and install either the menu bar app or the LaunchAgent daemon:

@@ -86,6 +86,14 @@ jobs:
             fi
             echo "### Install"
             echo
+            echo "With Homebrew, which installs the app and the CLI and clears the quarantine:"
+            echo
+            echo '```bash'
+            echo "brew install --cask sthbryan/tap/gigi"
+            echo '```'
+            echo
+            echo "Or from the archive:"
+            echo
             echo '```bash'
             echo "unzip ${{ steps.package.outputs.name }}.zip"
             echo "cd ${{ steps.package.outputs.name }}"
@@ -97,8 +105,8 @@ jobs:
             echo
             echo "### macOS security"
             echo
-            echo "The bundle is ad-hoc signed, so Gatekeeper quarantines it on first open:"
-            echo "right-click GiGi.app and choose Open, or run"
+            echo "The bundle is ad-hoc signed, so Gatekeeper quarantines it on first open. The Homebrew"
+            echo "cask clears that for you; from the archive, right-click GiGi.app and choose Open, or run"
             echo '`xattr -dr com.apple.quarantine GiGi.app` before opening it.'
           } > dist/notes.md
           cat dist/notes.md
