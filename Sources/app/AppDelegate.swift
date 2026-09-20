@@ -379,19 +379,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                        engine.config.idleThresholdSeconds,
                                        engine.config.intervalSeconds[0], engine.config.intervalSeconds[1])
 
-        let symbol: String
-        if !status.running {
-            symbol = "computermouse"
-        } else if status.outOfSchedule {
-            symbol = "moon.zzz"
-        } else {
-            symbol = "computermouse.fill"
-        }
-        if let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "GiGi") {
-            image.isTemplate = true
-            statusItem.button?.image = image
-            statusItem.button?.toolTip = "GiGi: \(engine.shortStatus) · \(status.jiggles)"
-        }
+        let indicator = StatusIcon.state(for: status)
+        statusItem.button?.image = StatusIcon.image(for: indicator)
+        let description = "GiGi: " + L(indicator.label)
+        statusItem.button?.toolTip = description + " · " + String(format: L("%d movements"), status.jiggles)
+        statusItem.button?.setAccessibilityLabel(description)
 
         refreshMenu(status)
     }
