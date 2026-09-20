@@ -195,7 +195,7 @@ struct PanelView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .frame(width: 18)
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.subheadline.weight(.medium))
                     if let detail {
                         Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
@@ -206,7 +206,7 @@ struct PanelView: View {
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.tertiary)
             }
-            .padding(.vertical, 5)
+            .padding(.vertical, 9)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
