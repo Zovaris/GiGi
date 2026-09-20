@@ -495,11 +495,16 @@ private extension AppDelegate {
         }
         panel.timerChanged = { [weak self] in
             guard let self else { return }
+            if self.panel.timerKind != "none", self.panel.scheduleEnabled {
+                self.panel.scheduleEnabled = false
+                self.applyPanelSchedule()
+            }
             self.panel.minutes = self.panel.minutes.isFinite ? max(1, min(10080, self.panel.minutes)) : 60
             self.defaults.set(self.panel.timerKind, forKey: "timerKind")
             self.defaults.set(self.panel.minutes, forKey: "timerMinutes")
             self.defaults.set(self.panel.until, forKey: "timerUntil")
-            if self.engine.running { self.applyPanelTimer() }
+            if self.engine.running || self.panel.timerKind == "none" { self.applyPanelTimer() }
+            self.refresh()
         }
         syncPanelFromConfig()
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
@@ -656,6 +661,10 @@ private extension AppDelegate {
     }
 
     private func applyPanelSchedule() {
+        if panel.scheduleEnabled {
+            panel.timerKind = "none"
+            panel.timerChanged()
+        }
         var config = engine.config
         let days = weekdayNames.filter { panel.scheduleDays.contains($0) }
         var windows = config.schedule.windows
