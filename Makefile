@@ -3,7 +3,7 @@ PLIST := Resources/Info.plist
 BUMP ?= patch
 VERSION ?=
 
-.PHONY: help build test strings check icon next-version version install uninstall clean
+.PHONY: help build test strings check icon next-version version tap install uninstall clean
 
 help:
 	@echo "GiGi"
@@ -15,6 +15,7 @@ help:
 	@echo "  make next-version [BUMP=..]    print the next version and change nothing"
 	@echo "  make version [BUMP=..|VERSION=x.y.z] [DRY=1] [NO_PUSH=1]"
 	@echo "                                 bump, commit, tag and push a release"
+	@echo "  make tap [VERSION=x.y.z]       point the Homebrew cask at a published release"
 	@echo "  make install [APP=1]           install.sh, with the menu bar app when APP=1"
 	@echo "  make uninstall                 remove the LaunchAgent"
 	@echo "  make clean                     drop the build products"
@@ -43,6 +44,9 @@ next-version:
 
 version: $(if $(DRY),,check)
 	@tools/version.sh $(if $(VERSION),--version $(VERSION),--bump $(BUMP)) $(if $(DRY),--dry-run) $(if $(NO_PUSH),--no-push)
+
+tap:
+	@tools/tap.sh $(VERSION)
 
 install:
 	./install.sh $(if $(APP),--app)
