@@ -1,5 +1,13 @@
 import SwiftUI
 
+private let panelAppIcon: NSImage = {
+    if let url = Bundle.main.url(forResource: "GiGi", withExtension: "icns"),
+       let icon = NSImage(contentsOf: url) {
+        return icon
+    }
+    return NSImage(named: NSImage.applicationIconName) ?? NSImage()
+}()
+
 private struct HeaderHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 68
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
@@ -143,7 +151,7 @@ struct PanelView: View {
 
     private var header: some View {
         HStack(spacing: 11) {
-            Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage())
+            Image(nsImage: panelAppIcon)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 42, height: 42)
