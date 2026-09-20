@@ -43,6 +43,11 @@ struct TimerTests {
         assert(repaired.scrollMode == "none", "an unknown scroll mode falls back to none")
         assert(repaired.hotkey == Config.default.hotkey, "an unparsable shortcut falls back to the default")
 
+        if let level = Brightness.system.current() {
+            assert((0...1).contains(level), "a readable brightness must sit inside 0...1")
+            assert(Brightness.system.isSupported, "a readable brightness means the display is controllable")
+        }
+
         print("Timer lifecycle, hotkey and config checks passed")
     }
 }
