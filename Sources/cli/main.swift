@@ -24,6 +24,8 @@ func usage() {
       --idle-threshold S      only move when the user has been idle for S seconds (default 40)
       --click MODE            extra click per move: none|single|double|right
       --scroll MODE           extra scroll per move: none|ping|down|up
+      --dim LEVEL             dim the display to LEVEL while active (0.05-1, or 5-100)
+      --no-dim                keep the display at full brightness
       --until HH:MM           stop at that time (today, or tomorrow if already past)
       --duration MIN          stop after N minutes
       --no-assert             do not create the display assertion
@@ -45,6 +47,8 @@ struct Options {
     var idleThreshold: Double?
     var click: String?
     var scroll: String?
+    var dim: Double?
+    var noDim = false
     var until: String?
     var durationMinutes: Double?
     var noAssert = false
@@ -88,6 +92,10 @@ func parseOptions(_ args: [String]) -> Options {
             options.click = nextValue("--click")
         case "--scroll":
             options.scroll = nextValue("--scroll")
+        case "--dim":
+            options.dim = nextValue("--dim").flatMap(Double.init)
+        case "--no-dim":
+            options.noDim = true
         case "--until":
             options.until = nextValue("--until")
         case "--duration":
@@ -131,6 +139,11 @@ func makeEngine(_ options: Options) -> Engine {
     if let value = options.idleThreshold { config.idleThresholdSeconds = value }
     if let value = options.click { config.clickMode = value }
     if let value = options.scroll { config.scrollMode = value }
+    if let value = options.dim {
+        config.dimWhileActive = true
+        config.dimBrightness = value > 1 ? value / 100 : value
+    }
+    if options.noDim { config.dimWhileActive = false }
     if options.noAssert { config.preventDisplaySleep = false }
     let engine = Engine(config: config)
     if options.ignoreSchedule { engine.mode = .always }
@@ -147,6 +160,7 @@ func runProbe(_ options: Options) {
     accessibility:    \(accessibilityTrusted() ? "GRANTED" : "NOT granted (the cursor will not move)")
     idle (HID):       \(String(format: "%.1f", userIdleSeconds())) s (CGEventSource .hidSystemState)
     idle (kernel):    \(hidIdleSeconds().map { String(format: "%.1f s (ioreg HIDIdleTime)", $0) } ?? "n/a")
+    brightness:       \(Brightness.system.current().map { String(format: "%.2f (controllable)", $0) } ?? "not controllable on this display")
     menu bar app:     \(appStatus.map { "running -> \($0)" } ?? "not running")
     """)
 
@@ -224,6 +238,7 @@ func runLoop(_ options: Options) {
     Log.info("starting daemon: interval \(Int(config.intervalSeconds[0]))-\(Int(config.intervalSeconds[1]))s, "
              + "distance \(config.jiggleDistancePixels)px, idle>\(Int(config.idleThresholdSeconds))s, "
              + "clicks \(config.clickMode), scroll \(config.scrollMode), "
+             + "dim \(config.dimWhileActive ? "\(Int(config.dimBrightness * 100))%" : "off"), "
              + "schedule \(engine.mode == .always ? "ignored" : (config.schedule.enabled ? "ON" : "OFF"))")
     engine.setDeadline(deadline)
     engine.start(reason: "CLI run")
