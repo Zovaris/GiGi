@@ -462,6 +462,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
 private extension AppDelegate {
     private func configurePanel() {
+        panel.language = defaults.string(forKey: "appLanguage") ?? "system"
+        panel.theme = defaults.string(forKey: "appTheme") ?? "system"
+        applyAppearance()
+        panel.preferencesChanged = { [weak self] in
+            guard let self else { return }
+            self.defaults.set(self.panel.language, forKey: "appLanguage")
+            self.defaults.set(self.panel.theme, forKey: "appTheme")
+            self.applyAppearance()
+            if let menu = self.legacyMenu {
+                menu.removeAllItems()
+                self.buildMenu(menu)
+            }
+            self.refresh()
+        }
         panel.timerKind = defaults.string(forKey: "timerKind") ?? "none"
         panel.minutes = defaults.object(forKey: "timerMinutes") as? Double ?? 60
         panel.until = defaults.object(forKey: "timerUntil") as? Date ?? Date()
@@ -596,6 +610,14 @@ private extension AppDelegate {
         if flags.contains(.shift) { modifiers |= UInt32(shiftKey) }
         if flags.contains(.command) { modifiers |= UInt32(cmdKey) }
         return modifiers
+    }
+
+    private func applyAppearance() {
+        switch panel.theme {
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        default: NSApp.appearance = nil
+        }
     }
 
     private func applyPanelMovement() {

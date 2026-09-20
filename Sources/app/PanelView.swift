@@ -9,6 +9,9 @@ final class PanelModel: ObservableObject {
     @Published var minutes: Double = 15
     @Published var until = Date()
     @Published var login = false
+    @Published var language = "system"
+    @Published var theme = "system"
+    var preferencesChanged: () -> Void = {}
     @Published var idleThreshold: Double = 40
     @Published var intervalLow: Double = 45
     @Published var intervalHigh: Double = 90
@@ -55,7 +58,6 @@ struct PanelView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         timerCard
                         movementCard
-                        displayCard
                         modeCard
                         shortcutCard
                         if let error = model.error {
@@ -87,7 +89,7 @@ struct PanelView: View {
         }
         .frame(width: 360, height: model.panelHeight)
         .background(.regularMaterial)
-        .preferredColorScheme(nil)
+        .environment(\.locale, model.language == "system" ? .autoupdatingCurrent : Locale(identifier: model.language))
     }
 
     private var header: some View {
@@ -269,7 +271,7 @@ struct PanelView: View {
             .frame(width: 52)
     }
 
-    private var displayCard: some View {
+    private var displaySetting: some View {
         HStack(spacing: 10) {
             Image(systemName: "display")
                 .foregroundStyle(.secondary)
@@ -284,7 +286,7 @@ struct PanelView: View {
                 .toggleStyle(.switch)
                 .accessibilityLabel(L("Keep display awake"))
         }
-        .cardStyle()
+        .controlSize(.small)
     }
 
     private var modeCard: some View {
@@ -320,17 +322,74 @@ struct PanelView: View {
     }
 
     private var settings: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Toggle(L("Start at login"), isOn: Binding(get: { model.login }, set: {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label(L("Start at login"), systemImage: "power")
+                Spacer()
+                Toggle(L("Start at login"), isOn: Binding(get: { model.login }, set: {
                 model.login = $0
                 model.loginChanged()
-            }))
-            Button(L("Reload configuration"), action: model.reload)
-            Button(L("Open configuration folder"), action: model.configFolder)
-            Button(L("Open log"), action: model.log)
+                }))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+            displaySetting
+            Divider()
+            HStack {
+                Label(L("Language"), systemImage: "globe")
+                Spacer(minLength: 8)
+                Picker(L("Language"), selection: Binding(get: { model.language }, set: {
+                model.language = $0
+                model.preferencesChanged()
+            })) {
+                Text(L("System")).tag("system")
+                Text("English").tag("en")
+                Text("Español").tag("es")
+                }
+                .labelsHidden()
+                .frame(width: 132)
+            }
+            HStack {
+                Label(L("Appearance"), systemImage: "circle.lefthalf.filled")
+                Spacer(minLength: 8)
+                Picker(L("Appearance"), selection: Binding(get: { model.theme }, set: {
+                model.theme = $0
+                model.preferencesChanged()
+            })) {
+                Text(L("System")).tag("system")
+                Text(L("Light")).tag("light")
+                Text(L("Dark")).tag("dark")
+                }
+                .labelsHidden()
+                .frame(width: 132)
+            }
+            Divider()
+            settingsAction("Open log", symbol: "doc.text", action: model.log)
+            DisclosureGroup(L("Advanced")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    settingsAction("Reload configuration", symbol: "arrow.clockwise", action: model.reload)
+                    settingsAction("Open configuration folder", symbol: "folder", action: model.configFolder)
+                }
+                .padding(.top, 8)
+            }
         }
+        .pickerStyle(.menu)
         .font(.subheadline)
-        .padding(.top, 9)
+        .padding(.top, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func settingsAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Label(L(title), systemImage: symbol)
+                Spacer(minLength: 4)
+                Image(systemName: "arrow.up.forward").foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var footer: some View {

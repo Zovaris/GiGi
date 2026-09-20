@@ -83,3 +83,15 @@
 "seconds" = "seconds";
 "Apply movement" = "Apply movement";
 "Could not write the configuration file" = "Could not write the configuration file";
+
+"System" = "System";
+
+"Language" = "Language";
+
+"Appearance" = "Appearance";
+
+"Light" = "Light";
+
+"Dark" = "Dark";
+
+"Advanced" = "Advanced";
