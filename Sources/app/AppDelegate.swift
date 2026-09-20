@@ -501,11 +501,11 @@ private extension AppDelegate {
             self.defaults.set(self.panel.until, forKey: "timerUntil")
             if self.engine.running { self.applyPanelTimer() }
         }
-        panel.clickMode = engine.config.clickMode
-        panel.scrollMode = engine.config.scrollMode
+        syncPanelFromConfig()
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
         panel.dimPreview = { [weak self] in self?.previewPanelDim() }
         panel.dimChanged = { [weak self] in self?.applyPanelDim() }
+        panel.scheduleChanged = { [weak self] in self?.applyPanelSchedule() }
         panel.recordHotkey = { [weak self] in self?.toggleHotkeyRecording() }
         panel.accessibility = { [weak self] in self?.openAccessibilityPane() }
         panel.move = { [weak self] in self?.moveNow() }
@@ -530,6 +530,13 @@ private extension AppDelegate {
         panel.scrollMode = engine.config.scrollMode
         panel.dimWhileActive = engine.config.dimWhileActive
         panel.dimBrightness = engine.config.dimBrightness
+        let schedule = engine.config.schedule
+        panel.scheduleEnabled = schedule.enabled
+        panel.scheduleDays = Set(schedule.days)
+        panel.scheduleWindows = max(1, schedule.windows.count)
+        let window = schedule.windows.first ?? ScheduleWindow(start: "09:00", end: "18:00")
+        panel.scheduleStart = date(fromHM: window.start) ?? date(fromHM: "09:00") ?? Date()
+        panel.scheduleEnd = date(fromHM: window.end) ?? date(fromHM: "18:00") ?? Date()
         panel.hotkey = engine.config.hotkey
         panel.hotkeyDisplay = HotkeyCenter.shared.registered?.display ?? ""
     }
@@ -646,6 +653,24 @@ private extension AppDelegate {
         engine.setDim(enabled: panel.dimWhileActive, brightness: panel.dimBrightness)
         panel.dimBrightness = engine.config.dimBrightness
         panel.status = engine.status
+    }
+
+    private func applyPanelSchedule() {
+        var config = engine.config
+        let days = weekdayNames.filter { panel.scheduleDays.contains($0) }
+        var windows = config.schedule.windows
+        let edited = ScheduleWindow(start: timeString(from: panel.scheduleStart),
+                                    end: timeString(from: panel.scheduleEnd))
+        if windows.isEmpty { windows = [edited] } else { windows[0] = edited }
+        config.schedule = Schedule(enabled: panel.scheduleEnabled, days: days, windows: windows)
+        guard config.schedule.enabled != engine.config.schedule.enabled
+            || config.schedule.days != engine.config.schedule.days
+            || config.schedule.windows != engine.config.schedule.windows else { return }
+        engine.apply(config: config)
+        panel.error = saveConfig(config, path: AppDelegate.configPathFromArguments())
+            ? nil : L("Could not write the configuration file")
+        syncPanelFromConfig()
+        refresh()
     }
 
     private func applyPanelDim() {

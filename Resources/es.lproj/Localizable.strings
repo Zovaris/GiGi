@@ -100,6 +100,36 @@
 
 "Dim the display" = "Atenuar la pantalla";
 
+"From" = "Desde";
+
+"%@ hour" = "Hora de %@";
+
+"%@ minute" = "Minutos de %@";
+
+"To" = "Hasta";
+
+"Repeat" = "Repetir";
+
+"Ignored while Mode is Always" = "Se ignora mientras el modo sea Siempre";
+
+"Select at least one day" = "Seleccioná al menos un día";
+
+"+%d more windows in the configuration file" = "+%d ventanas más en el archivo de configuración";
+
+"Su" = "Do";
+
+"Mo" = "Lu";
+
+"Tu" = "Ma";
+
+"We" = "Mi";
+
+"Th" = "Ju";
+
+"Fr" = "Vi";
+
+"Sa" = "Sá";
+
 "Dimmed to %d%% while GiGi is active" = "Atenuada al %d%% mientras GiGi está activo";
 
 "Brightness" = "Brillo";

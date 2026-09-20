@@ -55,6 +55,11 @@ final class PanelModel: ObservableObject {
     @Published var scrollMode = "none"
     @Published var dimWhileActive = false
     @Published var dimBrightness: Double = 0.35
+    @Published var scheduleEnabled = false
+    @Published var scheduleStart = Date()
+    @Published var scheduleEnd = Date()
+    @Published var scheduleDays: Set<String> = []
+    @Published var scheduleWindows = 1
     @Published var hotkey: String = Hotkey.default.config
     @Published var hotkeyDisplay: String = Hotkey.default.display
     @Published var recordingHotkey = false
@@ -72,6 +77,7 @@ final class PanelModel: ObservableObject {
     var movementChanged: () -> Void = {}
     var dimPreview: () -> Void = {}
     var dimChanged: () -> Void = {}
+    var scheduleChanged: () -> Void = {}
     var recordHotkey: () -> Void = {}
     var accessibility: () -> Void = {}
     var move: () -> Void = {}
@@ -164,6 +170,7 @@ struct PanelView: View {
                     timerCard
                     drawerCard
                     modeCard
+                    scheduleCard
                     if let error = model.error {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .font(.footnote)
@@ -488,6 +495,134 @@ struct PanelView: View {
             .pointerCursor()
         }
         .cardStyle()
+    }
+
+    private var scheduleCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                cardTitle(L("Schedule"), systemImage: "calendar")
+                Spacer(minLength: 8)
+                Toggle("", isOn: Binding(get: { model.scheduleEnabled }, set: { value in
+                    model.scheduleEnabled = value
+                    model.scheduleChanged()
+                }))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .accessibilityLabel(L("Schedule"))
+                .pointerCursor()
+            }
+            if model.mode == "always" {
+                Text(L("Ignored while Mode is Always"))
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 4) {
+                        Text(L("From")).font(.subheadline).fixedSize()
+                        timePickers($model.scheduleStart, label: L("From"))
+                        Text(L("To")).font(.subheadline).padding(.leading, 4).fixedSize()
+                        timePickers($model.scheduleEnd, label: L("To"))
+                        Spacer(minLength: 0)
+                    }
+                    HStack(spacing: 5) {
+                        Text(L("Repeat")).font(.subheadline)
+                        Spacer(minLength: 4)
+                        ForEach(weekdayNames, id: \.self) { day in
+                            dayChip(day)
+                        }
+                    }
+                    if model.scheduleDays.isEmpty {
+                        Text(L("Select at least one day"))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(!model.scheduleEnabled)
+                .opacity(model.scheduleEnabled ? 1 : 0.5)
+                if model.scheduleWindows > 1 {
+                    Text(String(format: L("+%d more windows in the configuration file"), model.scheduleWindows - 1))
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .cardStyle()
+        .disabled(model.mode == "always")
+    }
+
+    private func timePickers(_ date: Binding<Date>, label: String) -> some View {
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: date.wrappedValue)
+        let minute = calendar.component(.minute, from: date.wrappedValue)
+        let minutes = Set(stride(from: 0, to: 60, by: 5)).union([minute]).sorted()
+        return HStack(spacing: 3) {
+            Picker(String(format: L("%@ hour"), label), selection: Binding(get: { hour }, set: { value in
+                date.wrappedValue = time(of: date.wrappedValue, hour: value, minute: minute)
+                model.scheduleChanged()
+            })) {
+                ForEach(0...23, id: \.self) { value in
+                    Text(String(format: "%02d", value)).tag(value)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 48)
+            .pointerCursor()
+            Picker(String(format: L("%@ minute"), label), selection: Binding(get: { minute }, set: { value in
+                date.wrappedValue = time(of: date.wrappedValue, hour: hour, minute: value)
+                model.scheduleChanged()
+            })) {
+                ForEach(minutes, id: \.self) { value in
+                    Text(String(format: "%02d", value)).tag(value)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 48)
+            .pointerCursor()
+        }
+        .controlSize(.small)
+    }
+
+    private func time(of date: Date, hour: Int, minute: Int) -> Date {
+        let calendar = Calendar.current
+        var comps = calendar.dateComponents([.year, .month, .day], from: date)
+        comps.hour = hour
+        comps.minute = minute
+        comps.second = 0
+        return calendar.date(from: comps) ?? date
+    }
+
+    private func dayChip(_ day: String) -> some View {
+        let selected = model.scheduleDays.contains(day)
+        return Button {
+            if selected {
+                guard model.scheduleDays.count > 1 else { return }
+                model.scheduleDays.remove(day)
+            } else {
+                model.scheduleDays.insert(day)
+            }
+            model.scheduleChanged()
+        } label: {
+            Text(L(dayLabel(day)))
+                .font(.caption.weight(.medium))
+                .frame(width: 27, height: 21)
+                .background(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary), in: RoundedRectangle(cornerRadius: 5))
+                .foregroundStyle(selected ? Color.white : Color.primary)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(day)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .pointerCursor()
+    }
+
+    private func dayLabel(_ day: String) -> String {
+        switch day {
+        case "sun": return "Su"
+        case "mon": return "Mo"
+        case "tue": return "Tu"
+        case "wed": return "We"
+        case "thu": return "Th"
+        case "fri": return "Fr"
+        default: return "Sa"
+        }
     }
 
     private var permissionCard: some View {

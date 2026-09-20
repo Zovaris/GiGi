@@ -100,6 +100,36 @@
 
 "Dim the display" = "Dim the display";
 
+"From" = "From";
+
+"%@ hour" = "%@ hour";
+
+"%@ minute" = "%@ minute";
+
+"To" = "To";
+
+"Repeat" = "Repeat";
+
+"Ignored while Mode is Always" = "Ignored while Mode is Always";
+
+"Select at least one day" = "Select at least one day";
+
+"+%d more windows in the configuration file" = "+%d more windows in the configuration file";
+
+"Su" = "Su";
+
+"Mo" = "Mo";
+
+"Tu" = "Tu";
+
+"We" = "We";
+
+"Th" = "Th";
+
+"Fr" = "Fr";
+
+"Sa" = "Sa";
+
 "Dimmed to %d%% while GiGi is active" = "Dimmed to %d%% while GiGi is active";
 
 "Brightness" = "Brightness";
