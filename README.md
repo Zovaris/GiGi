@@ -54,8 +54,10 @@ hour and minute pickers plus a **Repeat** row of day chips, so the days and the 
 need the JSON file. Adjusting any of them applies immediately and rewrites the configuration.
 The same card includes a compact **Timer** menu and **Mode** selector. Enabling **Schedule**
 sets Timer to **No limit** and clears any active deadline. Choosing **For** or **Until** turns
-Schedule off; its hours and weekdays are preserved. With **Mode** set to **Always**, only
-the schedule controls are disabled, while the timer remains available.
+Schedule off; its hours and weekdays are preserved. **Mode** set to **Always** overrides the
+window at runtime: the hours stay editable and the card says the window is being ignored, so the
+schedule takes effect again as soon as Mode returns to **Schedule**. The choice lives in the app,
+not in the configuration file, and `--ignore-schedule` does the same for `gigi run`.
 **Movement** and **Settings** open as drawers that slide over the panel, so the list keeps a
 fixed size instead of growing and pushing the footer around. The drawer header repeats the
 section name and closes with the ✕, the Escape key, or the *Movement*/*Settings* row closing
