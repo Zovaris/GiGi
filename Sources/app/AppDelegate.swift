@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusBadge = StatusBadgeView()
     private let statusItem: NSStatusItem
     private let engine: Engine
+    private let notifier = Notifier()
     private let server = ControlServer()
     private let defaults = UserDefaults.standard
     private var timer: Timer?
@@ -61,6 +62,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             engine.preventDisplaySleep = defaults.bool(forKey: "preventDisplaySleep")
         }
         engine.onStatusChange = { [weak self] in self?.refresh() }
+        engine.notices.post = { [weak self] notice in self?.notifier.post(notice) }
+        notifier.onStatusChange = { [weak self] in self?.refresh() }
+        if engine.config.notificationsEnabled { notifier.prepare() }
 
         let menu = NSMenu()
         buildMenu(menu)
@@ -388,6 +392,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func refresh() {
         let status = engine.status
         panel.status = status
+        panel.notificationsDenied = notifier.denied
         panel.preventDisplaySleep = engine.preventDisplaySleep
         panel.mode = engine.mode.rawValue
         panel.login = SMAppService.mainApp.status == .enabled
@@ -523,6 +528,7 @@ private extension AppDelegate {
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
         panel.dimPreview = { [weak self] in self?.previewPanelDim() }
         panel.dimChanged = { [weak self] in self?.applyPanelDim() }
+        panel.notificationsChanged = { [weak self] in self?.applyPanelNotifications() }
         panel.appConditionChanged = { [weak self] in self?.applyPanelAppCondition() }
         panel.addApp = { [weak self] in self?.chooseApps() }
         panel.batteryChanged = { [weak self] in self?.applyPanelBattery() }
@@ -553,6 +559,7 @@ private extension AppDelegate {
         panel.dimWhileActive = engine.config.dimWhileActive
         panel.dimBrightness = engine.config.dimBrightness
         panel.appCondition = engine.config.appCondition
+        panel.notificationsEnabled = engine.config.notificationsEnabled
         panel.batteryLimitEnabled = engine.config.batteryLimitEnabled
         panel.batteryLimitPercent = engine.config.batteryLimitPercent
         let schedule = engine.config.schedule
@@ -682,6 +689,16 @@ private extension AppDelegate {
         engine.setDim(enabled: panel.dimWhileActive, brightness: panel.dimBrightness)
         panel.dimBrightness = engine.config.dimBrightness
         panel.status = engine.status
+    }
+
+    private func applyPanelNotifications() {
+        var config = engine.config
+        config.notificationsEnabled = panel.notificationsEnabled
+        engine.apply(config: config)
+        panel.error = saveConfig(engine.config, path: AppDelegate.configPathFromArguments())
+            ? nil : L("Could not write the configuration file")
+        if panel.notificationsEnabled { notifier.prepare() }
+        refresh()
     }
 
     private func applyPanelAppCondition() {

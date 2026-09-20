@@ -167,3 +167,21 @@
 "Any selected app can enable activity" = "Basta con que una de las apps cumpla";
 
 "Waiting for selected app" = "Esperando la app seleccionada";
+
+"Notifications" = "Notificaciones";
+
+"Warn me when GiGi stops on its own" = "Avisame cuando GiGi se detenga solo";
+
+"Blocked in System Settings" = "Bloqueadas en Ajustes del Sistema";
+
+"Silent" = "Silenciosas";
+
+"GiGi stopped" = "GiGi se detuvo";
+
+"The timer ran out, so GiGi stopped keeping the display awake." = "Se cumplió el temporizador, así que GiGi dejó de mantener la pantalla despierta.";
+
+"The battery is at %d%% and the limit is %d%%." = "La batería está al %d%% y el límite es %d%%.";
+
+"GiGi needs Accessibility permission" = "GiGi necesita permiso de Accesibilidad";
+
+"Grant it in System Settings > Privacy & Security > Accessibility." = "Concedelo en Ajustes del Sistema > Privacidad y seguridad > Accesibilidad.";

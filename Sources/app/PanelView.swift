@@ -58,6 +58,9 @@ final class PanelModel: ObservableObject {
     @Published var batteryLimitEnabled = false
     @Published var batteryLimitPercent = 20
     var batteryChanged: () -> Void = {}
+    @Published var notificationsEnabled = true
+    @Published var notificationsDenied = false
+    var notificationsChanged: () -> Void = {}
     @Published var appCondition = AppCondition()
     var appConditionChanged: () -> Void = {}
     var addApp: () -> Void = {}
@@ -495,6 +498,32 @@ struct PanelView: View {
         return String(format: L("Dimmed to %d%% while GiGi is active"), Int((model.dimBrightness * 100).rounded()))
     }
 
+    private var notificationsSetting: some View {
+        HStack(spacing: 10) {
+            Image(systemName: model.notificationsEnabled ? "bell.fill" : "bell.slash")
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L("Notifications")).font(.subheadline.weight(.medium))
+                Text(notificationsSummary).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Toggle(L("Notifications"), isOn: Binding(get: { model.notificationsEnabled }, set: { value in
+                model.notificationsEnabled = value
+                model.notificationsChanged()
+            }))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .pointerCursor()
+        }
+        .controlSize(.small)
+    }
+
+    private var notificationsSummary: String {
+        guard model.notificationsEnabled else { return L("Silent") }
+        if model.notificationsDenied { return L("Blocked in System Settings") }
+        return L("Warn me when GiGi stops on its own")
+    }
+
     private var modeRow: some View {
         HStack {
             Label(L("Mode"), systemImage: "arrow.triangle.2.circlepath")
@@ -791,6 +820,8 @@ struct PanelView: View {
             }
             displaySetting
             dimSetting
+            Divider()
+            notificationsSetting
             Divider()
             shortcutRow
             Divider()

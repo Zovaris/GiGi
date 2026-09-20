@@ -167,3 +167,21 @@
 "Any selected app can enable activity" = "Any selected app can enable activity";
 
 "Waiting for selected app" = "Waiting for selected app";
+
+"Notifications" = "Notifications";
+
+"Warn me when GiGi stops on its own" = "Warn me when GiGi stops on its own";
+
+"Blocked in System Settings" = "Blocked in System Settings";
+
+"Silent" = "Silent";
+
+"GiGi stopped" = "GiGi stopped";
+
+"The timer ran out, so GiGi stopped keeping the display awake." = "The timer ran out, so GiGi stopped keeping the display awake.";
+
+"The battery is at %d%% and the limit is %d%%." = "The battery is at %d%% and the limit is %d%%.";
+
+"GiGi needs Accessibility permission" = "GiGi needs Accessibility permission";
+
+"Grant it in System Settings > Privacy & Security > Accessibility." = "Grant it in System Settings > Privacy & Security > Accessibility.";
