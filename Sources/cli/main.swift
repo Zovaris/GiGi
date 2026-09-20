@@ -30,7 +30,7 @@ func usage() {
       --idle-threshold S      only move when the user has been idle for S seconds (default 40)
       --click MODE            extra click per move: none|single|double|right
       --scroll MODE           extra scroll per move: none|ping|down|up
-      --dim LEVEL             dim the display to LEVEL while active (0.05-1, or 5-100)
+      --dim LEVEL             dim the display to LEVEL while active (0-1, or 0-100)
       --no-dim                keep the display at full brightness
       --until HH:MM           stop at that time (today, or tomorrow if already past)
       --duration MIN          stop after N minutes

@@ -110,7 +110,7 @@ final class Engine {
 
     func setDim(enabled: Bool, brightness level: Double) {
         config.dimWhileActive = enabled
-        config.dimBrightness = min(1, max(0.05, level.isFinite ? level : Config.default.dimBrightness))
+        config.dimBrightness = min(1, max(0, level.isFinite ? level : Config.default.dimBrightness))
         syncBrightness()
         onStatusChange?()
     }
@@ -221,7 +221,7 @@ final class Engine {
             return
         }
         if restoreBrightness == nil { restoreBrightness = brightness.current() }
-        let target = min(1, max(0.05, config.dimBrightness))
+        let target = min(1, max(0, config.dimBrightness))
         if let applied = appliedBrightness, abs(applied - target) < 0.005 { return }
         guard brightness.set(target) else {
             appliedBrightness = nil

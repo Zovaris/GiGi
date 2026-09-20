@@ -503,7 +503,7 @@ struct PanelView: View {
                 Slider(value: Binding(get: { model.dimBrightness }, set: { value in
                     model.dimBrightness = value
                     model.dimPreview()
-                }), in: 0.05...1, onEditingChanged: { editing in
+                }), in: 0...1, onEditingChanged: { editing in
                     if !editing { model.dimChanged() }
                 })
                 .controlSize(.small)

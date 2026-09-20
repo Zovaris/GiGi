@@ -100,6 +100,38 @@ struct TimerTests {
 
         level = 0.8
         written = []
+        var zeroConfig = Config.default
+        zeroConfig.dimWhileActive = true
+        zeroConfig.dimBrightness = 0
+        zeroConfig.idleThresholdSeconds = 1e9
+        let blackout = Engine(config: zeroConfig)
+        blackout.brightness = fake
+        blackout.mode = .always
+        blackout.start(reason: "blackout test")
+        assert(blackout.tick(), "the engine must keep running while the display is fully dark")
+        assert(written == [0], "a level of 0 darkens the display completely")
+        blackout.stop(reason: "blackout test")
+        assert(written == [0, 0.8], "stopping restores the brightness captured before darkening")
+
+        var clamped = Config.default
+        clamped.dimBrightness = -1
+        assert(clamped.sanitized().dimBrightness == 0, "a negative dim level clamps to 0")
+        clamped.dimBrightness = 2
+        assert(clamped.sanitized().dimBrightness == 1, "a dim level above 1 clamps to 1")
+        clamped.dimBrightness = 0
+        assert(clamped.sanitized().dimBrightness == 0, "a dim level of 0 survives sanitizing")
+        clamped.dimBrightness = .nan
+        assert(clamped.sanitized().dimBrightness == 0.35, "a dim level that is not a number falls back")
+        let setter = Engine(config: Config.default)
+        setter.setDim(enabled: true, brightness: -0.5)
+        assert(setter.config.dimBrightness == 0, "setDim clamps a negative level to 0")
+        setter.setDim(enabled: true, brightness: 0)
+        assert(setter.config.dimBrightness == 0, "setDim keeps a level of 0")
+        setter.setDim(enabled: true, brightness: 5)
+        assert(setter.config.dimBrightness == 1, "setDim clamps a level above 1")
+
+        level = 0.8
+        written = []
         var noAssert = dimConfig
         noAssert.preventDisplaySleep = false
         let bare = Engine(config: noAssert)

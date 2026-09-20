@@ -73,7 +73,7 @@ struct Config: Codable {
         config.idleThresholdSeconds = max(0, config.idleThresholdSeconds)
         if !Config.clickModes.contains(config.clickMode) { config.clickMode = "none" }
         if !Config.scrollModes.contains(config.scrollMode) { config.scrollMode = "none" }
-        config.dimBrightness = min(1, max(0.05, config.dimBrightness.isFinite ? config.dimBrightness : 0.35))
+        config.dimBrightness = min(1, max(0, config.dimBrightness.isFinite ? config.dimBrightness : 0.35))
         if config.hotkey != Hotkey.disabledName && Hotkey.parse(config.hotkey) == nil {
             config.hotkey = Config.default.hotkey
         }

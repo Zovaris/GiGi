@@ -102,7 +102,7 @@ recording to disable it, or Escape to keep the current one.
 
 **Dim the display** lowers the screen brightness while GiGi keeps it awake, which saves power
 and is easier on the eyes during long unattended runs. The row has its own switch and a slider
-from 5% to 100%; dragging the slider dims the screen as you move it and writes the configuration
+from 0% to 100%; dragging the slider dims the screen as you move it and writes the configuration
 once you let go. Brightness returns to the value it had before as soon as GiGi stops or the
 switch goes off, and a brightness you change by hand during a run is left alone. Dimming needs
 **Keep display awake**, since a display macOS is allowed to sleep is already dark, so the switch
@@ -171,7 +171,7 @@ Useful options for `run`, `once`, and `probe`:
 --duration MINUTES        stop after a duration
 --click MODE              extra click per move: none|single|double|right
 --scroll MODE             extra scroll per move: none|ping|down|up
---dim LEVEL               dim the display to LEVEL while active (0.05-1, or 5-100)
+--dim LEVEL               dim the display to LEVEL while active (0-1, or 0-100)
 --no-dim                  keep the display at full brightness
 --no-assert               do not keep the display awake
 --ignore-schedule         ignore schedule windows
@@ -211,7 +211,8 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
 `jiggleDistancePixels` px and back), `circle`, `square`, or `figureEight`, which draw a path of
 `motionRadiusPixels` px and always return the cursor to where it started. The radius accepts
 `2`–`300`; `clickMode` accepts `none`, `single`, `double`, and `right`; `scrollMode` accepts `none`, `ping`,
-`down`, and `up`; `dimBrightness` is a level between `0.05` and `1`; `notificationsEnabled`
+`down`, and `up`; `dimBrightness` is a level between `0` and `1`, where `0` darkens the display
+completely; `notificationsEnabled`
 turns the system notifications off without touching the rest; `checkForUpdates` turns the daily
 release check off; `hotkey` is a combination
 such as `ctrl+cmd+j`, `opt+shift+f9`, or `none`. Keys
