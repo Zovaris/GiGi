@@ -6,6 +6,8 @@
   "wakeDisplayOnWindowStart": true,
   "clickMode": "none",
   "scrollMode": "none",
+  "dimWhileActive": false,
+  "dimBrightness": 0.35,
   "hotkey": "ctrl+cmd+j",
   "schedule": {
     "enabled": true,

@@ -55,11 +55,19 @@ behind it. Right-click the menu bar icon for the original command menu and recen
 
 The **Movement** drawer sets how long GiGi waits for you to go idle and how often it moves;
 **Apply movement** writes both back to the JSON configuration and applies them immediately.
-The **Settings** drawer holds Start at login, display wakefulness, the global **Shortcut**,
-Language, Appearance, Open log and, under **Advanced**, reload and open the configuration
-folder. Schedule windows remain configurable in the JSON file. The **Shortcut** row in there
+The **Settings** drawer holds Start at login, display wakefulness and dimming, the global
+**Shortcut**, Language, Appearance, Open log and, under **Advanced**, reload and open the
+configuration folder. Schedule windows remain configurable in the JSON file. The **Shortcut** row in there
 records a global key combination that turns GiGi on and off from any app; press Delete while
 recording to disable it, or Escape to keep the current one.
+
+**Dim the display** lowers the screen brightness while GiGi keeps it awake, which saves power
+and is easier on the eyes during long unattended runs. The row has its own switch and a slider
+from 5% to 100%; dragging the slider dims the screen as you move it and writes the configuration
+once you let go. Brightness returns to the value it had before as soon as GiGi stops or the
+switch goes off, and a brightness you change by hand during a run is left alone. Dimming needs
+**Keep display awake**, since a display macOS is allowed to sleep is already dark, so the switch
+stays disabled until that row is on.
 
 **Clicks** and **Scroll** add a synthetic click or scroll to every move, which keeps presence
 services happy when a 2px cursor nudge is not enough. Both are off by default, and both land
@@ -101,6 +109,8 @@ Useful options for `run`, `once`, and `probe`:
 --duration MINUTES        stop after a duration
 --click MODE              extra click per move: none|single|double|right
 --scroll MODE             extra scroll per move: none|ping|down|up
+--dim LEVEL               dim the display to LEVEL while active (0.05-1, or 5-100)
+--no-dim                  keep the display at full brightness
 --no-assert               do not keep the display awake
 --ignore-schedule         ignore schedule windows
 --force                   run while the app is open
@@ -120,6 +130,8 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
   "wakeDisplayOnWindowStart": true,
   "clickMode": "none",
   "scrollMode": "none",
+  "dimWhileActive": false,
+  "dimBrightness": 0.35,
   "hotkey": "ctrl+cmd+j",
   "schedule": {
     "enabled": true,
@@ -130,7 +142,8 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
 ```
 
 `clickMode` accepts `none`, `single`, `double`, and `right`; `scrollMode` accepts `none`, `ping`,
-`down`, and `up`; `hotkey` is a combination such as `ctrl+cmd+j`, `opt+shift+f9`, or `none`. Keys
+`down`, and `up`; `dimBrightness` is a level between `0.05` and `1`; `hotkey` is a combination
+such as `ctrl+cmd+j`, `opt+shift+f9`, or `none`. Keys
 can be letters, digits, `space`, `tab`, `return`, `delete`, the four arrows, and `f1`–`f12`.
 Missing keys fall back to their defaults, so an older config file keeps working.
 
@@ -139,7 +152,7 @@ app with `./bin/gigi reload`; restart the LaunchAgent after editing its config.
 
 ## Architecture
 
-- `Sources/Core`: engine, schedule, power assertion, cursor events, IPC, and logging.
+- `Sources/Core`: engine, schedule, power assertion, cursor events, brightness, IPC, and logging.
 - `Sources/app`: AppKit menu bar and SwiftUI control panel.
 - `Sources/cli`: CLI and LaunchAgent frontend.
 - `Resources`: bundle metadata, icon, and localizations.
@@ -151,7 +164,9 @@ The menu bar app exposes `CFMessagePort` as `com.codebuff.gigi.control` for CLI 
 Accessibility may be blocked by macOS or MDM. A locked Mac can prevent synthetic cursor events,
 and presence services may use signals beyond the local idle timer. Keeping the display awake also
 uses battery. Click and scroll modes fire wherever the pointer is, so leave them off unless you
-need them, and prefer `ping` over `down` or `up`.
+need them, and prefer `ping` over `down` or `up`. Dimming drives the real backlight through a
+private framework, so it can stop working after a macOS update; `./bin/gigi probe` reports whether
+the display allows brightness control. External displays often do not.
 
 ```bash
 ./uninstall.sh            # removes the LaunchAgent; keeps app, config, and logs
