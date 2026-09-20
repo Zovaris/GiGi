@@ -15,6 +15,8 @@ struct Config: Codable {
     var intervalSeconds: [Double]
     var idleThresholdSeconds: Double
     var jiggleDistancePixels: Double
+    var motionPattern: String
+    var motionRadiusPixels: Double
     var preventDisplaySleep: Bool
     var wakeDisplayOnWindowStart: Bool
     var clickMode: String
@@ -36,6 +38,8 @@ struct Config: Codable {
         intervalSeconds: [45, 90],
         idleThresholdSeconds: 40,
         jiggleDistancePixels: 2,
+        motionPattern: Motion.defaultPattern,
+        motionRadiusPixels: Motion.defaultRadiusPixels,
         preventDisplaySleep: true,
         wakeDisplayOnWindowStart: true,
         clickMode: "none",
@@ -62,6 +66,8 @@ struct Config: Codable {
             config.intervalSeconds = Config.default.intervalSeconds
         }
         config.jiggleDistancePixels = max(0, config.jiggleDistancePixels)
+        if !Motion.patterns.contains(config.motionPattern) { config.motionPattern = Motion.defaultPattern }
+        config.motionRadiusPixels = Motion.clampRadius(config.motionRadiusPixels)
         config.idleThresholdSeconds = max(0, config.idleThresholdSeconds)
         if !Config.clickModes.contains(config.clickMode) { config.clickMode = "none" }
         if !Config.scrollModes.contains(config.scrollMode) { config.scrollMode = "none" }
@@ -86,6 +92,8 @@ extension Config {
         intervalSeconds = try container.decodeIfPresent([Double].self, forKey: .intervalSeconds) ?? fallback.intervalSeconds
         idleThresholdSeconds = try container.decodeIfPresent(Double.self, forKey: .idleThresholdSeconds) ?? fallback.idleThresholdSeconds
         jiggleDistancePixels = try container.decodeIfPresent(Double.self, forKey: .jiggleDistancePixels) ?? fallback.jiggleDistancePixels
+        motionPattern = try container.decodeIfPresent(String.self, forKey: .motionPattern) ?? fallback.motionPattern
+        motionRadiusPixels = try container.decodeIfPresent(Double.self, forKey: .motionRadiusPixels) ?? fallback.motionRadiusPixels
         preventDisplaySleep = try container.decodeIfPresent(Bool.self, forKey: .preventDisplaySleep) ?? fallback.preventDisplaySleep
         wakeDisplayOnWindowStart = try container.decodeIfPresent(Bool.self, forKey: .wakeDisplayOnWindowStart) ?? fallback.wakeDisplayOnWindowStart
         clickMode = try container.decodeIfPresent(String.self, forKey: .clickMode) ?? fallback.clickMode

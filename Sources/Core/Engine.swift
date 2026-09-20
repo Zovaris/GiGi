@@ -124,14 +124,17 @@ final class Engine {
         }
         if !running { power.stopDisplayAssertion() }
         syncBrightness()
-        Log.info("engine: config applied (interval \(Int(config.intervalSeconds[0]))-\(Int(config.intervalSeconds[1]))s)")
+        Log.info("engine: config applied (interval \(Int(config.intervalSeconds[0]))-\(Int(config.intervalSeconds[1]))s, pattern \(config.motionPattern))")
         onStatusChange?()
     }
 
     @discardableResult
     func jiggleNow() -> Bool {
         guard ensureAccessibility() else { return false }
-        let moved = jiggle(distance: config.jiggleDistancePixels, stateID: eventSource)
+        let moved = simulateMotion(pattern: config.motionPattern,
+                                   distance: config.jiggleDistancePixels,
+                                   radius: config.motionRadiusPixels,
+                                   stateID: eventSource)
         if moved {
             postExtraActivity()
             jiggles += 1
@@ -195,11 +198,15 @@ final class Engine {
             lastIdle = idle
             if sinceLast >= interval && idle >= config.idleThresholdSeconds {
                 if ensureAccessibility() {
-                    if jiggle(distance: config.jiggleDistancePixels, stateID: eventSource) {
+                    if simulateMotion(pattern: config.motionPattern,
+                                      distance: config.jiggleDistancePixels,
+                                      radius: config.motionRadiusPixels,
+                                      stateID: eventSource) {
                         postExtraActivity()
                         jiggles += 1
                         lastJiggle = Date()
-                        Log.info(String(format: "jiggle #%d (idle %.0fs, wait %.0fs)", jiggles, idle, interval))
+                        Log.info(String(format: "%@ #%d (idle %.0fs, wait %.0fs)",
+                                        config.motionPattern, jiggles, idle, interval))
                         onStatusChange?()
                     }
                 }
