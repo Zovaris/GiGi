@@ -30,34 +30,36 @@ func render(size: Int) -> CGImage? {
     context.restoreGState()
 
     context.saveGState()
-    context.translateBy(x: 545, y: 520)
-    context.rotate(by: .pi / 7)
-    let mouse = CGPath(roundedRect: CGRect(x: -158, y: -258, width: 316, height: 516),
-                       cornerWidth: 158, cornerHeight: 158, transform: nil)
-    context.saveGState()
-    context.setShadow(offset: CGSize(width: 0, height: -14), blur: 22,
-                      color: CGColor(red: 0.42, green: 0.06, blue: 0.10, alpha: 0.24))
-    context.addPath(mouse)
+    context.translateBy(x: 180, y: 190)
+    context.scaleBy(x: 34, y: 34)
+    let cursor = CGMutablePath()
+    cursor.move(to: CGPoint(x: 6, y: 12))
+    cursor.addCurve(to: CGPoint(x: 7.6, y: 13), control1: CGPoint(x: 5.8, y: 13.3),
+                    control2: CGPoint(x: 6.7, y: 13.7))
+    cursor.addLine(to: CGPoint(x: 17.5, y: 6))
+    cursor.addCurve(to: CGPoint(x: 17, y: 4.4), control1: CGPoint(x: 18.5, y: 5.3),
+                    control2: CGPoint(x: 18.1, y: 4.6))
+    cursor.addLine(to: CGPoint(x: 12.5, y: 3.8))
+    cursor.addLine(to: CGPoint(x: 9.5, y: 0.7))
+    cursor.addCurve(to: CGPoint(x: 7.8, y: 1.2), control1: CGPoint(x: 8.7, y: -0.1),
+                    control2: CGPoint(x: 8, y: 0.2))
+    cursor.closeSubpath()
     context.setFillColor(CGColor(red: 1, green: 0.98, blue: 0.95, alpha: 1))
+    context.addPath(cursor)
     context.fillPath()
-    context.restoreGState()
-
-    let wheel = CGPath(roundedRect: CGRect(x: -19, y: 92, width: 38, height: 96),
-                       cornerWidth: 19, cornerHeight: 19, transform: nil)
-    context.addPath(wheel)
-    context.setFillColor(CGColor(red: 0.93, green: 0.26, blue: 0.30, alpha: 1))
-    context.fillPath()
-    context.restoreGState()
-
     context.setLineCap(.round)
-    context.setLineWidth(30)
-    context.setStrokeColor(CGColor(red: 1, green: 0.98, blue: 0.95, alpha: 0.85))
-    for (start, end) in [(CGPoint(x: 240, y: 430), CGPoint(x: 300, y: 455)),
-                         (CGPoint(x: 260, y: 325), CGPoint(x: 340, y: 360))] {
+    context.setLineWidth(1.4)
+    context.setStrokeColor(CGColor(red: 1, green: 0.98, blue: 0.95, alpha: 1))
+    for (start, end) in [
+        (CGPoint(x: 2, y: 11.8), CGPoint(x: 3.4, y: 11.8)),
+        (CGPoint(x: 3.2, y: 17), CGPoint(x: 4.4, y: 15.6)),
+        (CGPoint(x: 8, y: 19), CGPoint(x: 8, y: 17.4))
+    ] {
         context.move(to: start)
         context.addLine(to: end)
         context.strokePath()
     }
+    context.restoreGState()
     return context.makeImage()
 }
 
