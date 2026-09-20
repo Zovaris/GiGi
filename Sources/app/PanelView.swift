@@ -90,6 +90,7 @@ final class PanelModel: ObservableObject {
 
 struct PanelView: View {
     @ObservedObject var model: PanelModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var deadlineText: String? {
         guard let deadline = model.status.deadline else { return nil }
@@ -167,10 +168,8 @@ struct PanelView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    timerCard
-                    drawerCard
-                    modeCard
                     scheduleCard
+                    drawerCard
                     if let error = model.error {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .font(.footnote)
@@ -262,57 +261,65 @@ struct PanelView: View {
         .background(.regularMaterial)
     }
 
-    private var timerCard: some View {
+    private var timerBody: some View {
         VStack(alignment: .leading, spacing: 10) {
-            cardTitle(L("Timer"), systemImage: "timer")
-            Picker(L("Timer"), selection: Binding(get: { model.timerKind }, set: {
-                model.timerKind = $0
-                model.timerChanged()
-            })) {
-                Text(L("No limit")).tag("none")
-                Text(L("For")).tag("duration")
-                Text(L("Until")).tag("until")
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .pointerCursor()
-            if model.timerKind == "duration" {
-                HStack(spacing: 8) {
-                    TextField(L("Minutes"), value: $model.minutes, format: .number.precision(.fractionLength(0...1)))
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 90)
-                    Text(L("minutes")).foregroundStyle(.secondary)
-                    Spacer()
-                    ForEach([15.0, 60.0, 240.0], id: \.self) { value in
-                        Button(value == 60 ? L("1 h") : value == 240 ? L("4 h") : L("15 m")) {
-                            model.minutes = value
-                            model.timerChanged()
-                        }
-                        .buttonStyle(.borderless)
-                        .foregroundStyle(.tint)
-                        .pointerCursor()
-                    }
-                }
-                .onSubmit { model.timerChanged() }
-            } else if model.timerKind == "until" {
-                DatePicker(L("End time"), selection: $model.until, displayedComponents: .hourAndMinute)
-                    .datePickerStyle(.field)
-            }
-            HStack {
-                if model.timerKind != "none" {
-                    Button(L("Apply timer"), action: model.timerChanged)
-                        .controlSize(.small)
-                        .pointerCursor()
-                }
+            HStack(spacing: 10) {
+                cardTitle(L("Timer"), systemImage: "timer")
                 Spacer(minLength: 8)
-                if let deadlineText {
-                    Text(String(format: L("Ends at %@"), deadlineText))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                Picker(L("Timer"), selection: Binding(get: { model.timerKind }, set: {
+                    model.timerKind = $0
+                    model.timerChanged()
+                })) {
+                    Text(L("No limit")).tag("none")
+                    Text(L("For")).tag("duration")
+                    Text(L("Until")).tag("until")
                 }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .fixedSize()
+                .pointerCursor()
             }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    if model.timerKind == "duration" {
+                        Text(L("For")).font(.subheadline)
+                        Picker(L("Minutes"), selection: Binding(get: { model.minutes }, set: {
+                            model.minutes = $0
+                            model.timerChanged()
+                        })) {
+                            ForEach(durationOptions, id: \.self) { value in
+                                Text(value, format: .number.precision(.fractionLength(0...1))).tag(value)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.menu)
+                        .frame(width: 76)
+                        .pointerCursor()
+                        Text(L("minutes")).font(.subheadline).foregroundStyle(.secondary)
+                    } else if model.timerKind == "until" {
+                        Text(L("End time")).font(.subheadline)
+                        timePickers($model.until, label: L("End time"), minuteStep: 1, onChange: model.timerChanged)
+                    } else {
+                        Text(L("Runs until you stop it"))
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .controlSize(.small)
+                .frame(height: 22)
+                Text(deadlineText.map { String(format: L("Ends at %@"), $0) } ?? " ")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(height: 14)
+                    .accessibilityHidden(deadlineText == nil)
+            }
+            .frame(height: 44, alignment: .topLeading)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: model.timerKind)
         }
-        .cardStyle()
+    }
+
+    private var durationOptions: [Double] {
+        Set([1, 5, 10, 15, 30, 45, 60, 90, 120, 180, 240, 480, 720, 1440, 10080])
+            .union([model.minutes]).sorted()
     }
 
     private var movementBody: some View {
@@ -478,7 +485,7 @@ struct PanelView: View {
         return String(format: L("Dimmed to %d%% while GiGi is active"), Int((model.dimBrightness * 100).rounded()))
     }
 
-    private var modeCard: some View {
+    private var modeRow: some View {
         HStack {
             Label(L("Mode"), systemImage: "arrow.triangle.2.circlepath")
                 .font(.subheadline.weight(.medium))
@@ -494,10 +501,20 @@ struct PanelView: View {
             .pickerStyle(.menu)
             .pointerCursor()
         }
-        .cardStyle()
     }
 
     private var scheduleCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            scheduleBody
+            Divider()
+            timerBody
+            Divider()
+            modeRow
+        }
+        .cardStyle()
+    }
+
+    private var scheduleBody: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
                 cardTitle(L("Schedule"), systemImage: "calendar")
@@ -518,9 +535,9 @@ struct PanelView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(spacing: 4) {
                         Text(L("From")).font(.subheadline).fixedSize()
-                        timePickers($model.scheduleStart, label: L("From"))
+                        timePickers($model.scheduleStart, label: L("From"), onChange: model.scheduleChanged)
                         Text(L("To")).font(.subheadline).padding(.leading, 4).fixedSize()
-                        timePickers($model.scheduleEnd, label: L("To"))
+                        timePickers($model.scheduleEnd, label: L("To"), onChange: model.scheduleChanged)
                         Spacer(minLength: 0)
                     }
                     HStack(spacing: 5) {
@@ -543,19 +560,18 @@ struct PanelView: View {
                 }
             }
         }
-        .cardStyle()
         .disabled(model.mode == "always")
     }
 
-    private func timePickers(_ date: Binding<Date>, label: String) -> some View {
+    private func timePickers(_ date: Binding<Date>, label: String, minuteStep: Int = 5, onChange: @escaping () -> Void) -> some View {
         let calendar = Calendar.current
         let hour = calendar.component(.hour, from: date.wrappedValue)
         let minute = calendar.component(.minute, from: date.wrappedValue)
-        let minutes = Set(stride(from: 0, to: 60, by: 5)).union([minute]).sorted()
+        let minutes = Set(stride(from: 0, to: 60, by: minuteStep)).union([minute]).sorted()
         return HStack(spacing: 3) {
             Picker(String(format: L("%@ hour"), label), selection: Binding(get: { hour }, set: { value in
                 date.wrappedValue = time(of: date.wrappedValue, hour: value, minute: minute)
-                model.scheduleChanged()
+                onChange()
             })) {
                 ForEach(0...23, id: \.self) { value in
                     Text(String(format: "%02d", value)).tag(value)
@@ -567,7 +583,7 @@ struct PanelView: View {
             .pointerCursor()
             Picker(String(format: L("%@ minute"), label), selection: Binding(get: { minute }, set: { value in
                 date.wrappedValue = time(of: date.wrappedValue, hour: hour, minute: value)
-                model.scheduleChanged()
+                onChange()
             })) {
                 ForEach(minutes, id: \.self) { value in
                     Text(String(format: "%02d", value)).tag(value)
