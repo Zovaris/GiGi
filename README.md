@@ -44,14 +44,18 @@ the CLI prevents duplicate engines unless `--force` is used.
 
 Click GiGi in the menu bar to open its control panel. The main switch starts or stops
 cursor movement and display wakefulness. Choose **No limit**, a duration, or an end time;
-the selection is remembered for the next session. Confirm edited minutes or an end time with **Apply timer**; presets apply immediately.
+the selection is remembered for the next session. Duration and end-time menu selections apply immediately, just like schedule hours.
+The timer keeps a stable height when switching to **No limit** to avoid resizing the popover.
 Changing the timer during a session updates its deadline. When the timer expires, GiGi stays off, including after relaunch.
 
 The panel also includes display, schedule mode, Accessibility, and login controls. The **Schedule**
 card turns schedule windows on with its own switch and sets the window with **From** and **To**
 hour and minute pickers plus a **Repeat** row of day chips, so the days and the hours no longer
-need the JSON file. Adjusting any of them applies immediately and rewrites the configuration,
-and with **Mode** set to **Always** the whole card is disabled because windows are ignored then.
+need the JSON file. Adjusting any of them applies immediately and rewrites the configuration.
+The same card includes a compact **Timer** menu and **Mode** selector. Enabling **Schedule**
+sets Timer to **No limit** and clears any active deadline. Choosing **For** or **Until** turns
+Schedule off; its hours and weekdays are preserved. With **Mode** set to **Always**, only
+the schedule controls are disabled, while the timer remains available.
 **Movement** and **Settings** open as drawers that slide over the panel, so the list keeps a
 fixed size instead of growing and pushing the footer around. The drawer header repeats the
 section name and closes with the ✕, the Escape key, or the *Movement*/*Settings* row closing
