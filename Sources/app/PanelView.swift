@@ -540,7 +540,7 @@ struct PanelView: View {
                     model.batteryLimitPercent = $0
                     model.batteryChanged()
                 })) {
-                    ForEach(1...100, id: \.self) { percent in
+                    ForEach(batteryChoices, id: \.self) { percent in
                         Text("\(percent)%").tag(percent)
                     }
                 }
@@ -555,6 +555,10 @@ struct PanelView: View {
             Text(L("Only while using battery power"))
                 .font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    private var batteryChoices: [Int] {
+        Set(Config.batteryLimitChoices).union([model.batteryLimitPercent]).sorted()
     }
 
     private var scheduleBody: some View {
