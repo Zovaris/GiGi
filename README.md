@@ -42,6 +42,17 @@ the CLI prevents duplicate engines unless `--force` is used.
 
 ## Usage
 
+Click GiGi in the menu bar to open its control panel. The main switch starts or stops
+cursor movement and display wakefulness. Choose **No limit**, a duration, or an end time;
+the selection is remembered for the next session. Confirm edited minutes or an end time with **Apply timer**; presets apply immediately.
+Changing the timer during a session updates its deadline. When the timer expires, GiGi stays off, including after relaunch.
+
+The panel also includes display, schedule mode, Accessibility, and login controls.
+Expand **Settings** to reload or open configuration and logs. Right-click the menu bar
+icon for the original command menu and recent activity. Movement intervals, idle delay,
+and schedule windows remain configurable in the JSON file below.
+
+
 ```bash
 ./bin/gigi help
 ./bin/gigi run                 # run until stopped
@@ -102,7 +113,7 @@ app with `./bin/gigi reload`; restart the LaunchAgent after editing its config.
 ## Architecture
 
 - `Sources/Core`: engine, schedule, power assertion, cursor events, IPC, and logging.
-- `Sources/app`: AppKit menu bar frontend.
+- `Sources/app`: AppKit menu bar and SwiftUI control panel.
 - `Sources/cli`: CLI and LaunchAgent frontend.
 - `Resources`: bundle metadata, icon, and localizations.
 
