@@ -58,17 +58,25 @@ enum StatusIcon {
         rays.stroke()
     }
 
-    static func image(for state: State, appearance: NSAppearance? = nil, running: Bool? = nil) -> NSImage {
-        let dark = appearance?.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        let ink = dark ? NSColor.white : NSColor.black
+    static func image(for state: State, running: Bool? = nil) -> NSImage {
         let image = NSImage(size: NSSize(width: 22, height: 20), flipped: false) { _ in
-            drawCursor(ink: ink, running: running ?? (state != .inactive))
+            drawCursor(ink: .black, running: running ?? (state != .inactive))
             if state != .inactive {
                 NSGraphicsContext.saveGraphicsState()
                 NSGraphicsContext.current?.compositingOperation = .copy
                 NSColor.clear.setFill()
                 NSBezierPath(ovalIn: NSRect(x: 10, y: 9, width: 12, height: 12)).fill()
                 NSGraphicsContext.restoreGraphicsState()
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
+    }
+
+    static func badge(for state: State) -> NSImage {
+        NSImage(size: NSSize(width: 22, height: 20), flipped: false) { _ in
+            if state != .inactive {
                 let badge = NSRect(x: 11.5, y: 10.5, width: 9, height: 9)
                 switch state {
                 case .active: NSColor.systemGreen.setFill()
@@ -87,7 +95,9 @@ enum StatusIcon {
             }
             return true
         }
-        image.isTemplate = false
-        return image
     }
+}
+
+final class StatusBadgeView: NSImageView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

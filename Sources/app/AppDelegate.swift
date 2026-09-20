@@ -4,6 +4,7 @@ import ServiceManagement
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    private let statusBadge = StatusBadgeView()
     private let statusItem: NSStatusItem
     private let engine: Engine
     private let server = ControlServer()
@@ -31,6 +32,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
         NSApp.setActivationPolicy(.accessory)
+        if let button = statusItem.button {
+            statusBadge.translatesAutoresizingMaskIntoConstraints = false
+            statusBadge.setAccessibilityElement(false)
+            button.addSubview(statusBadge)
+            NSLayoutConstraint.activate([
+                statusBadge.centerXAnchor.constraint(equalTo: button.centerXAnchor),
+                statusBadge.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+                statusBadge.widthAnchor.constraint(equalToConstant: 22),
+                statusBadge.heightAnchor.constraint(equalToConstant: 20)
+            ])
+        }
         if let configPath { defaults.set(configPath, forKey: "configPath") }
     }
 
@@ -383,7 +395,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                        engine.config.intervalSeconds[0], engine.config.intervalSeconds[1])
 
         let indicator = StatusIcon.state(for: status)
-        statusItem.button?.image = StatusIcon.image(for: indicator, appearance: statusItem.button?.effectiveAppearance, running: status.running)
+        statusItem.button?.image = StatusIcon.image(for: indicator, running: status.running)
+        statusBadge.image = StatusIcon.badge(for: indicator)
         let description = "GiGi: " + L(indicator.label)
         statusItem.button?.toolTip = description + " · " + String(format: L("%d movements"), status.jiggles)
         statusItem.button?.setAccessibilityLabel(description)
