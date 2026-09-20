@@ -28,6 +28,7 @@ struct Config: Codable {
 
     static let clickModes = ["none", "single", "double", "right"]
     static let scrollModes = ["none", "ping", "down", "up"]
+    static let batteryLimitChoices = [5, 10, 15, 20, 25, 30]
 
     static let `default` = Config(
         intervalSeconds: [45, 90],

@@ -10,6 +10,14 @@ enum BatteryTests {
         assert(config.sanitized().batteryLimitPercent == 1)
         config.batteryLimitPercent = 200
         assert(config.sanitized().batteryLimitPercent == 100)
+        assert(Config.batteryLimitChoices.contains(Config.default.batteryLimitPercent),
+               "the default threshold must be one the panel offers")
+        assert(Config.batteryLimitChoices.allSatisfy { $0 >= 5 && $0 <= 30 },
+               "the offered thresholds stay inside the useful range")
+        var handEdited = Config.default
+        handEdited.batteryLimitPercent = 45
+        assert(handEdited.sanitized().batteryLimitPercent == 45,
+               "a threshold written in the file survives even when the panel does not offer it")
         config.batteryLimitPercent = 20
         config.preventDisplaySleep = false
         config.idleThresholdSeconds = 1e9
