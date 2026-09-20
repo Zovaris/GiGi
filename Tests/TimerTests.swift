@@ -6,6 +6,7 @@ struct TimerTests {
         BatteryTests.run()
         AppConditionTests.run()
         NoticeTests.run()
+        MotionTests.run()
         let engine = Engine(config: .default)
         let now = Date()
         engine.start(reason: "timer test")
