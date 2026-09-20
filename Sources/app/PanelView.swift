@@ -12,6 +12,11 @@ final class PanelModel: ObservableObject {
     @Published var idleThreshold: Double = 40
     @Published var intervalLow: Double = 45
     @Published var intervalHigh: Double = 90
+    @Published var clickMode = "none"
+    @Published var scrollMode = "none"
+    @Published var hotkey: String = Hotkey.default.config
+    @Published var hotkeyDisplay: String = Hotkey.default.display
+    @Published var recordingHotkey = false
     @Published var intervalSummary = ""
     @Published var movementExpanded = true
     @Published var topToken = UUID()
@@ -23,6 +28,7 @@ final class PanelModel: ObservableObject {
     var timerChanged: () -> Void = {}
     var movementChanged: () -> Void = {}
     var movementToggled: (Bool) -> Void = { _ in }
+    var recordHotkey: () -> Void = {}
     var accessibility: () -> Void = {}
     var move: () -> Void = {}
     var reload: () -> Void = {}
@@ -51,6 +57,7 @@ struct PanelView: View {
                         movementCard
                         displayCard
                         modeCard
+                        shortcutCard
                         if let error = model.error {
                             Label(error, systemImage: "exclamationmark.triangle.fill")
                                 .font(.footnote)
@@ -185,6 +192,43 @@ struct PanelView: View {
                     Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
                     Spacer(minLength: 0)
                 }
+                HStack(spacing: 6) {
+                    Text(L("Clicks")).font(.subheadline).frame(width: 108, alignment: .leading)
+                    Picker(L("Clicks"), selection: Binding(get: { model.clickMode }, set: {
+                        model.clickMode = $0
+                        model.movementChanged()
+                    })) {
+                        Text(L("None")).tag("none")
+                        Text(L("Single")).tag("single")
+                        Text(L("Double")).tag("double")
+                        Text(L("Right")).tag("right")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    Spacer(minLength: 0)
+                }
+                HStack(spacing: 6) {
+                    Text(L("Scroll")).font(.subheadline).frame(width: 108, alignment: .leading)
+                    Picker(L("Scroll"), selection: Binding(get: { model.scrollMode }, set: {
+                        model.scrollMode = $0
+                        model.movementChanged()
+                    })) {
+                        Text(L("None")).tag("none")
+                        Text(L("Ping")).tag("ping")
+                        Text(L("Down")).tag("down")
+                        Text(L("Up")).tag("up")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    Spacer(minLength: 0)
+                }
+                if model.clickMode != "none" || model.scrollMode != "none" {
+                    Label(L("Clicks and scrolls land wherever the pointer is"),
+                          systemImage: "exclamationmark.triangle")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 HStack {
                     Button(L("Apply movement"), action: model.movementChanged)
                         .controlSize(.small)
@@ -195,6 +239,25 @@ struct PanelView: View {
             .onSubmit { model.movementChanged() }
         } label: {
             cardTitle(L("Movement"), systemImage: "speedometer")
+        }
+        .cardStyle()
+    }
+
+    private var shortcutCard: some View {
+        HStack(spacing: 8) {
+            cardTitle(L("Shortcut"), systemImage: "keyboard")
+            Spacer(minLength: 8)
+            if model.recordingHotkey {
+                Text(L("Press a key combination")).font(.caption).foregroundStyle(.secondary)
+                Button(L("Cancel"), action: model.recordHotkey).controlSize(.small)
+            } else {
+                Text(model.hotkeyDisplay.isEmpty ? "—" : model.hotkeyDisplay)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
+                Button(L("Record"), action: model.recordHotkey).controlSize(.small)
+            }
         }
         .cardStyle()
     }

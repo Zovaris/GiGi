@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import ServiceManagement
 import SwiftUI
 
@@ -11,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let panel = PanelModel()
     private let popover = NSPopover()
     private var legacyMenu: NSMenu?
+    private var recordingMonitor: Any?
 
     private var statusTitleItem: NSMenuItem!
     private var statusDetailItem: NSMenuItem!
@@ -52,6 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         legacyMenu = menu
         configurePanel()
+        configureHotkey()
         statusItem.button?.target = self
         statusItem.button?.action = #selector(showPanel)
         statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -95,6 +98,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         engine.stop(reason: "app is quitting")
+        stopHotkeyRecording()
+        HotkeyCenter.shared.unregister()
         server.stop()
         timer?.invalidate()
         Log.info("app: exiting")
@@ -104,7 +109,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let parts = request.split(separator: " ", maxSplits: 2).map(String.init)
         switch parts.first ?? "status" {
         case "status":
-            return engine.statusLine()
+            let hotkey = HotkeyCenter.shared.registered?.config ?? Hotkey.disabledName
+            return engine.statusLine() + " hotkey=\(hotkey)"
         case "start":
             startFromPanel()
             defaults.set(true, forKey: "running")
@@ -484,10 +490,13 @@ private extension AppDelegate {
             if self.engine.running { self.applyPanelTimer() }
         }
         panel.movementExpanded = defaults.object(forKey: "movementExpanded") as? Bool ?? true
+        panel.clickMode = engine.config.clickMode
+        panel.scrollMode = engine.config.scrollMode
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
         panel.movementToggled = { [weak self] expanded in
             self?.defaults.set(expanded, forKey: "movementExpanded")
         }
+        panel.recordHotkey = { [weak self] in self?.toggleHotkeyRecording() }
         panel.accessibility = { [weak self] in self?.openAccessibilityPane() }
         panel.move = { [weak self] in self?.moveNow() }
         panel.reload = { [weak self] in self?.reloadConfig() }
@@ -506,6 +515,95 @@ private extension AppDelegate {
         panel.idleThreshold = engine.config.idleThresholdSeconds
         panel.intervalLow = engine.config.intervalSeconds[0]
         panel.intervalHigh = engine.config.intervalSeconds[1]
+        panel.clickMode = engine.config.clickMode
+        panel.scrollMode = engine.config.scrollMode
+        panel.hotkey = engine.config.hotkey
+        panel.hotkeyDisplay = HotkeyCenter.shared.registered?.display ?? ""
+    }
+
+    private func configureHotkey() {
+        HotkeyCenter.shared.onPress = { [weak self] in
+            guard let self else { return }
+            self.toggleEngine()
+            Log.info("hotkey: engine is now \(self.engine.running ? "ON" : "OFF")")
+        }
+        applyHotkey(engine.config.hotkey)
+    }
+
+    private func applyHotkey(_ text: String) {
+        var config = engine.config
+        config.hotkey = text
+        panel.hotkey = text
+        panel.recordingHotkey = false
+        panel.error = nil
+        if text == Hotkey.disabledName {
+            HotkeyCenter.shared.unregister()
+        } else if let hotkey = Hotkey.parse(text) {
+            if !HotkeyCenter.shared.register(hotkey) {
+                panel.error = String(format: L("Could not register %@"), hotkey.display)
+            }
+        } else {
+            panel.error = L("Unsupported shortcut")
+        }
+        engine.apply(config: config)
+        panel.hotkeyDisplay = HotkeyCenter.shared.registered?.display ?? ""
+        if !saveConfig(config, path: AppDelegate.configPathFromArguments()) {
+            panel.error = L("Could not write the configuration file")
+        }
+        refresh()
+    }
+
+    private func toggleHotkeyRecording() {
+        if panel.recordingHotkey {
+            stopHotkeyRecording()
+            refresh()
+            return
+        }
+        panel.recordingHotkey = true
+        recordingMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            self?.finishHotkeyRecording(with: event)
+            return nil
+        }
+    }
+
+    private func stopHotkeyRecording() {
+        if let recordingMonitor { NSEvent.removeMonitor(recordingMonitor) }
+        recordingMonitor = nil
+        panel.recordingHotkey = false
+    }
+
+    private func finishHotkeyRecording(with event: NSEvent) {
+        stopHotkeyRecording()
+        if event.keyCode == UInt16(kVK_Escape) {
+            refresh()
+            return
+        }
+        if event.keyCode == UInt16(kVK_Delete) || event.keyCode == UInt16(kVK_ForwardDelete) {
+            applyHotkey(Hotkey.disabledName)
+            return
+        }
+        let modifiers = carbonModifiers(event.modifierFlags)
+        guard let hotkey = Hotkey.from(keyCode: UInt32(event.keyCode), modifiers: modifiers) else {
+            panel.error = L("Unsupported shortcut")
+            refresh()
+            return
+        }
+        if hotkey.modifiers == 0 && !hotkey.config.hasPrefix("f") {
+            panel.error = L("Use at least one modifier key")
+            refresh()
+            return
+        }
+        applyHotkey(hotkey.config)
+    }
+
+    private func carbonModifiers(_ flags: NSEvent.ModifierFlags) -> UInt32 {
+        let flags = flags.intersection(.deviceIndependentFlagsMask)
+        var modifiers: UInt32 = 0
+        if flags.contains(.control) { modifiers |= UInt32(controlKey) }
+        if flags.contains(.option) { modifiers |= UInt32(optionKey) }
+        if flags.contains(.shift) { modifiers |= UInt32(shiftKey) }
+        if flags.contains(.command) { modifiers |= UInt32(cmdKey) }
+        return modifiers
     }
 
     private func applyPanelMovement() {
@@ -514,6 +612,8 @@ private extension AppDelegate {
         let low = clampSeconds(panel.intervalLow, fallback: config.intervalSeconds[0])
         let high = clampSeconds(panel.intervalHigh, fallback: config.intervalSeconds[1])
         config.intervalSeconds = [min(low, high), max(low, high)]
+        config.clickMode = panel.clickMode
+        config.scrollMode = panel.scrollMode
         engine.apply(config: config)
         panel.error = saveConfig(config, path: AppDelegate.configPathFromArguments())
             ? nil : L("Could not write the configuration file")
