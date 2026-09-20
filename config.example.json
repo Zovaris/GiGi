@@ -13,6 +13,7 @@
   "batteryLimitEnabled": false,
   "batteryLimitPercent": 20,
   "notificationsEnabled": true,
+  "checkForUpdates": true,
   "hotkey": "ctrl+cmd+j",
   "appCondition": {
     "enabled": false,

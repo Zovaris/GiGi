@@ -115,6 +115,18 @@ it is on. If you deny it, the row says **Blocked in System Settings** instead of
 it cannot show. Turning GiGi off yourself posts nothing, and a notice is raised once per session,
 so a missing permission does not nag on every move.
 
+**Updates** live at the bottom of the **Settings** drawer: the row shows the version this build
+reports, a switch for the automatic check, and the result of the last one. With the switch on,
+the app asks GitHub once a day and posts a notification when a newer release exists; **Check now**
+asks immediately and **View release** opens its page. Nothing is installed behind your back — from
+a Homebrew install the command is `brew upgrade --cask sthbryan/tap/gigi`. The check is one
+read-only request to the public GitHub API (no account, no telemetry, no identifier beyond the
+version you are running), and the CLI can do the same thing without the app:
+
+```bash
+./bin/gigi update
+```
+
 **Clicks** and **Scroll** add a synthetic click or scroll to every move, which keeps presence
 services happy when a 2px cursor nudge is not enough. Both are off by default, and both land
 wherever the pointer happens to be: a click really does click, and a scroll really does scroll.
@@ -140,6 +152,8 @@ When the menu bar app is running, the CLI can control it:
 ./bin/gigi reload
 ./bin/gigi panel               # open the control panel
 ./bin/gigi panel movement      # open the panel on a drawer: movement | settings
+./bin/gigi version             # version of this build
+./bin/gigi update              # compare this build with the latest GitHub release
 ./bin/gigi quit-app
 ```
 
@@ -183,6 +197,7 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
   "dimWhileActive": false,
   "dimBrightness": 0.35,
   "notificationsEnabled": true,
+  "checkForUpdates": true,
   "hotkey": "ctrl+cmd+j",
   "schedule": {
     "enabled": true,
@@ -197,7 +212,8 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
 `motionRadiusPixels` px and always return the cursor to where it started. The radius accepts
 `2`–`300`; `clickMode` accepts `none`, `single`, `double`, and `right`; `scrollMode` accepts `none`, `ping`,
 `down`, and `up`; `dimBrightness` is a level between `0.05` and `1`; `notificationsEnabled`
-turns the system notifications off without touching the rest; `hotkey` is a combination
+turns the system notifications off without touching the rest; `checkForUpdates` turns the daily
+release check off; `hotkey` is a combination
 such as `ctrl+cmd+j`, `opt+shift+f9`, or `none`. Keys
 can be letters, digits, `space`, `tab`, `return`, `delete`, the four arrows, and `f1`–`f12`.
 Missing keys fall back to their defaults, so an older config file keeps working.
