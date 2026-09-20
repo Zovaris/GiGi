@@ -1,8 +1,44 @@
 import SwiftUI
 
+private struct HeaderHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 68
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private struct FooterHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 50
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private struct ContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 final class PanelModel: ObservableObject {
     @Published var status = Engine.Status()
-    @Published var panelHeight: CGFloat = 560
+    @Published private var headerHeight: CGFloat = 68
+    @Published private var footerHeight: CGFloat = 50
+    @Published private var contentHeight: CGFloat = 0
+    @Published var maxHeight: CGFloat = 520
+
+    var panelHeight: CGFloat {
+        min(maxHeight, headerHeight + footerHeight + 2 + max(contentHeight, 320))
+    }
+
+    private func adjust(_ value: CGFloat, _ stored: CGFloat) -> Bool {
+        abs(value - stored) > 0.5
+    }
+
+    func setMetrics(header: CGFloat? = nil, footer: CGFloat? = nil, content: CGFloat? = nil) {
+        var changed = false
+        if let header, adjust(header, headerHeight) { headerHeight = header; changed = true }
+        if let footer, adjust(footer, footerHeight) { footerHeight = footer; changed = true }
+        if let content, adjust(content, contentHeight) { contentHeight = content; changed = true }
+        if changed { heightChanged() }
+    }
+
+    var heightChanged: () -> Void = {}
     @Published var preventDisplaySleep = true
     @Published var mode = "schedule"
     @Published var timerKind = "none"
@@ -21,7 +57,7 @@ final class PanelModel: ObservableObject {
     @Published var hotkeyDisplay: String = Hotkey.default.display
     @Published var recordingHotkey = false
     @Published var intervalSummary = ""
-    @Published var movementExpanded = true
+    @Published var drawer: String?
     @Published var topToken = UUID()
     @Published var error: String?
 
@@ -30,7 +66,6 @@ final class PanelModel: ObservableObject {
     var modeChanged: (String) -> Void = { _ in }
     var timerChanged: () -> Void = {}
     var movementChanged: () -> Void = {}
-    var movementToggled: (Bool) -> Void = { _ in }
     var recordHotkey: () -> Void = {}
     var accessibility: () -> Void = {}
     var move: () -> Void = {}
@@ -53,43 +88,34 @@ struct PanelView: View {
         VStack(spacing: 0) {
             header
             Divider().opacity(0.45)
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        timerCard
-                        movementCard
-                        modeCard
-                        shortcutCard
-                        if let error = model.error {
-                            Label(error, systemImage: "exclamationmark.triangle.fill")
-                                .font(.footnote)
-                                .foregroundStyle(.orange)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        if !model.status.accessibilityTrusted { permissionCard }
-                            DisclosureGroup {
-                                settings
-                            } label: {
-                                Label(L("Settings"), systemImage: "gearshape")
-                                    .font(.headline)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(.quaternary.opacity(0.34), in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .padding(14)
-                    .id("panel-top")
-                }
-                .onChange(of: model.topToken) { _, _ in
-                    proxy.scrollTo("panel-top", anchor: .top)
+            ZStack(alignment: .top) {
+                mainList
+                    .offset(x: model.drawer == nil ? 0 : -360)
+                    .allowsHitTesting(model.drawer == nil)
+                    .accessibilityHidden(model.drawer != nil)
+                if let drawer = model.drawer {
+                    drawerPage(drawer)
+                        .transition(.move(edge: .trailing))
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .clipped()
+            .animation(.spring(response: 0.32, dampingFraction: 0.88), value: model.drawer)
             Divider().opacity(0.45)
             footer
         }
         .frame(width: 360, height: model.panelHeight)
         .background(.regularMaterial)
         .environment(\.locale, model.language == "system" ? .autoupdatingCurrent : Locale(identifier: model.language))
+        .onPreferenceChange(HeaderHeightKey.self) { height in
+            DispatchQueue.main.async { model.setMetrics(header: height) }
+        }
+        .onPreferenceChange(FooterHeightKey.self) { height in
+            DispatchQueue.main.async { model.setMetrics(footer: height) }
+        }
+        .onPreferenceChange(ContentHeightKey.self) { height in
+            DispatchQueue.main.async { model.setMetrics(content: height) }
+        }
     }
 
     private var header: some View {
@@ -102,9 +128,6 @@ struct PanelView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("GiGi").font(.headline)
                 Text(statusLabel).font(.caption).foregroundStyle(.secondary)
-                if !model.intervalSummary.isEmpty {
-                    Text(model.intervalSummary).font(.caption2).foregroundStyle(.secondary)
-                }
             }
             Spacer(minLength: 8)
             Toggle("", isOn: Binding(get: { model.status.running }, set: { _ in model.toggle() }))
@@ -114,6 +137,9 @@ struct PanelView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 13)
+        .background(GeometryReader { proxy in
+            Color.clear.preference(key: HeaderHeightKey.self, value: proxy.size.height)
+        })
     }
 
     private var statusLabel: String {
@@ -122,6 +148,103 @@ struct PanelView: View {
         }
         if model.status.running && model.status.outOfSchedule { return L("Waiting for schedule") }
         return model.status.running ? L("Active") : L("Inactive")
+    }
+
+    private var mainList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    timerCard
+                    drawerCard
+                    modeCard
+                    shortcutCard
+                    if let error = model.error {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if !model.status.accessibilityTrusted { permissionCard }
+                }
+                .padding(14)
+                .id("panel-top")
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: ContentHeightKey.self, value: proxy.size.height)
+                })
+            }
+            .onChange(of: model.topToken) { _, _ in
+                proxy.scrollTo("panel-top", anchor: .top)
+            }
+        }
+    }
+
+    private var drawerCard: some View {
+        VStack(spacing: 0) {
+            drawerRow(L("Movement"), systemImage: "speedometer", detail: model.intervalSummary, page: "movement")
+            Divider().padding(.leading, 28)
+            drawerRow(L("Settings"), systemImage: "gearshape", detail: nil, page: "settings")
+        }
+        .cardStyle()
+    }
+
+    private func drawerRow(_ title: String, systemImage: String, detail: String?, page: String) -> some View {
+        Button {
+            model.drawer = page
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: systemImage)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.subheadline.weight(.medium))
+                    if let detail {
+                        Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(detail ?? "")
+    }
+
+    private func drawerPage(_ kind: String) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                cardTitle(kind == "movement" ? L("Movement") : L("Settings"),
+                          systemImage: kind == "movement" ? "speedometer" : "gearshape")
+                Spacer(minLength: 8)
+                Button {
+                    model.drawer = nil
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
+                .accessibilityLabel(L("Close"))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 11)
+            Divider().opacity(0.45)
+            ScrollView {
+                Group {
+                    if kind == "movement" { movementBody } else { settingsBody }
+                }
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(.regularMaterial)
     }
 
     private var timerCard: some View {
@@ -174,75 +297,66 @@ struct PanelView: View {
         .cardStyle()
     }
 
-    private var movementCard: some View {
-        DisclosureGroup(isExpanded: Binding(get: { model.movementExpanded }, set: {
-            model.movementExpanded = $0
-            model.movementToggled($0)
-        })) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 6) {
-                    Text(L("Idle delay")).font(.subheadline).frame(width: 108, alignment: .leading)
-                    secondsField($model.idleThreshold)
-                    Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
-                    Spacer(minLength: 0)
-                }
-                HStack(spacing: 6) {
-                    Text(L("Move every")).font(.subheadline).frame(width: 108, alignment: .leading)
-                    secondsField($model.intervalLow)
-                    Text("–").foregroundStyle(.secondary)
-                    secondsField($model.intervalHigh)
-                    Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
-                    Spacer(minLength: 0)
-                }
-                HStack(spacing: 6) {
-                    Text(L("Clicks")).font(.subheadline).frame(width: 108, alignment: .leading)
-                    Picker(L("Clicks"), selection: Binding(get: { model.clickMode }, set: {
-                        model.clickMode = $0
-                        model.movementChanged()
-                    })) {
-                        Text(L("None")).tag("none")
-                        Text(L("Single")).tag("single")
-                        Text(L("Double")).tag("double")
-                        Text(L("Right")).tag("right")
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    Spacer(minLength: 0)
-                }
-                HStack(spacing: 6) {
-                    Text(L("Scroll")).font(.subheadline).frame(width: 108, alignment: .leading)
-                    Picker(L("Scroll"), selection: Binding(get: { model.scrollMode }, set: {
-                        model.scrollMode = $0
-                        model.movementChanged()
-                    })) {
-                        Text(L("None")).tag("none")
-                        Text(L("Ping")).tag("ping")
-                        Text(L("Down")).tag("down")
-                        Text(L("Up")).tag("up")
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    Spacer(minLength: 0)
-                }
-                if model.clickMode != "none" || model.scrollMode != "none" {
-                    Label(L("Clicks and scrolls land wherever the pointer is"),
-                          systemImage: "exclamationmark.triangle")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                HStack {
-                    Button(L("Apply movement"), action: model.movementChanged)
-                        .controlSize(.small)
-                    Spacer(minLength: 8)
-                }
+    private var movementBody: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Text(L("Idle delay")).font(.subheadline).frame(width: 108, alignment: .leading)
+                secondsField($model.idleThreshold)
+                Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
+                Spacer(minLength: 0)
             }
-            .padding(.top, 10)
-            .onSubmit { model.movementChanged() }
-        } label: {
-            cardTitle(L("Movement"), systemImage: "speedometer")
+            HStack(spacing: 6) {
+                Text(L("Move every")).font(.subheadline).frame(width: 108, alignment: .leading)
+                secondsField($model.intervalLow)
+                Text("–").foregroundStyle(.secondary)
+                secondsField($model.intervalHigh)
+                Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 6) {
+                Text(L("Clicks")).font(.subheadline).frame(width: 108, alignment: .leading)
+                Picker(L("Clicks"), selection: Binding(get: { model.clickMode }, set: {
+                    model.clickMode = $0
+                    model.movementChanged()
+                })) {
+                    Text(L("None")).tag("none")
+                    Text(L("Single")).tag("single")
+                    Text(L("Double")).tag("double")
+                    Text(L("Right")).tag("right")
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 6) {
+                Text(L("Scroll")).font(.subheadline).frame(width: 108, alignment: .leading)
+                Picker(L("Scroll"), selection: Binding(get: { model.scrollMode }, set: {
+                    model.scrollMode = $0
+                    model.movementChanged()
+                })) {
+                    Text(L("None")).tag("none")
+                    Text(L("Ping")).tag("ping")
+                    Text(L("Down")).tag("down")
+                    Text(L("Up")).tag("up")
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                Spacer(minLength: 0)
+            }
+            if model.clickMode != "none" || model.scrollMode != "none" {
+                Label(L("Clicks and scrolls land wherever the pointer is"),
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            HStack {
+                Button(L("Apply movement"), action: model.movementChanged)
+                    .controlSize(.small)
+                Spacer(minLength: 8)
+            }
         }
-        .cardStyle()
+        .onSubmit { model.movementChanged() }
     }
 
     private var shortcutCard: some View {
@@ -321,14 +435,14 @@ struct PanelView: View {
         .tint(.orange)
     }
 
-    private var settings: some View {
+    private var settingsBody: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label(L("Start at login"), systemImage: "power")
                 Spacer()
                 Toggle(L("Start at login"), isOn: Binding(get: { model.login }, set: {
-                model.login = $0
-                model.loginChanged()
+                    model.login = $0
+                    model.loginChanged()
                 }))
                 .labelsHidden()
                 .toggleStyle(.switch)
@@ -340,12 +454,12 @@ struct PanelView: View {
                 Label(L("Language"), systemImage: "globe")
                 Spacer(minLength: 8)
                 Picker(L("Language"), selection: Binding(get: { model.language }, set: {
-                model.language = $0
-                model.preferencesChanged()
-            })) {
-                Text(L("System")).tag("system")
-                Text("English").tag("en")
-                Text("Español").tag("es")
+                    model.language = $0
+                    model.preferencesChanged()
+                })) {
+                    Text(L("System")).tag("system")
+                    Text("English").tag("en")
+                    Text("Español").tag("es")
                 }
                 .labelsHidden()
                 .frame(width: 132)
@@ -354,12 +468,12 @@ struct PanelView: View {
                 Label(L("Appearance"), systemImage: "circle.lefthalf.filled")
                 Spacer(minLength: 8)
                 Picker(L("Appearance"), selection: Binding(get: { model.theme }, set: {
-                model.theme = $0
-                model.preferencesChanged()
-            })) {
-                Text(L("System")).tag("system")
-                Text(L("Light")).tag("light")
-                Text(L("Dark")).tag("dark")
+                    model.theme = $0
+                    model.preferencesChanged()
+                })) {
+                    Text(L("System")).tag("system")
+                    Text(L("Light")).tag("light")
+                    Text(L("Dark")).tag("dark")
                 }
                 .labelsHidden()
                 .frame(width: 132)
@@ -376,7 +490,6 @@ struct PanelView: View {
         }
         .pickerStyle(.menu)
         .font(.subheadline)
-        .padding(.top, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -395,8 +508,7 @@ struct PanelView: View {
     private var footer: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(String(format: L("%d movements"), model.status.jiggles))
-                    .font(.caption.weight(.medium))
+                Text(String(format: L("%d movements"), model.status.jiggles))                        .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
                 if let idle = model.status.lastIdle {
                     Text(String(format: L("Idle %.0fs"), idle)).font(.caption2).foregroundStyle(.secondary)
@@ -420,6 +532,9 @@ struct PanelView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .background(GeometryReader { proxy in
+            Color.clear.preference(key: FooterHeightKey.self, value: proxy.size.height)
+        })
     }
 
     private func cardTitle(_ title: String, systemImage: String) -> some View {

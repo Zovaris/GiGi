@@ -48,11 +48,16 @@ the selection is remembered for the next session. Confirm edited minutes or an e
 Changing the timer during a session updates its deadline. When the timer expires, GiGi stays off, including after relaunch.
 
 The panel also includes display, schedule mode, Accessibility, and login controls.
-Expand **Settings** to reload or open configuration and logs. Right-click the menu bar
-icon for the original command menu and recent activity. Expand **Movement** to set how long
-GiGi waits for you to go idle and how often it moves; **Apply movement** writes both back
-to the JSON configuration and applies them immediately. Schedule windows remain
-configurable in that file.
+**Movement** and **Settings** open as drawers that slide over the panel, so the list keeps a
+fixed size instead of growing and pushing the footer around. The drawer header repeats the
+section name and closes with the ✕, the Escape key, or the *Movement*/*Settings* row closing
+behind it. Right-click the menu bar icon for the original command menu and recent activity.
+
+The **Movement** drawer sets how long GiGi waits for you to go idle and how often it moves;
+**Apply movement** writes both back to the JSON configuration and applies them immediately.
+The **Settings** drawer holds Start at login, display wakefulness, Language, Appearance,
+Open log and, under **Advanced**, reload and open the configuration folder. Schedule windows
+remain configurable in the JSON file.
 
 **Clicks** and **Scroll** add a synthetic click or scroll to every move, which keeps presence
 services happy when a 2px cursor nudge is not enough. Both are off by default, and both land

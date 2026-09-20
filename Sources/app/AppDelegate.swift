@@ -495,13 +495,9 @@ private extension AppDelegate {
             self.defaults.set(self.panel.until, forKey: "timerUntil")
             if self.engine.running { self.applyPanelTimer() }
         }
-        panel.movementExpanded = defaults.object(forKey: "movementExpanded") as? Bool ?? true
         panel.clickMode = engine.config.clickMode
         panel.scrollMode = engine.config.scrollMode
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
-        panel.movementToggled = { [weak self] expanded in
-            self?.defaults.set(expanded, forKey: "movementExpanded")
-        }
         panel.recordHotkey = { [weak self] in self?.toggleHotkeyRecording() }
         panel.accessibility = { [weak self] in self?.openAccessibilityPane() }
         panel.move = { [weak self] in self?.moveNow() }
@@ -509,6 +505,7 @@ private extension AppDelegate {
         panel.configFolder = { [weak self] in self?.openConfigFolder() }
         panel.log = { [weak self] in self?.openLog() }
         panel.loginChanged = { [weak self] in self?.toggleLaunchAtLogin() }
+        panel.heightChanged = { [weak self] in self?.sizePanel() }
         panel.quit = { NSApp.terminate(nil) }
         popover.behavior = .transient
         let controller = NSHostingController(rootView: PanelView(model: panel))
@@ -654,12 +651,13 @@ private extension AppDelegate {
         else { defaults.removeObject(forKey: "deadline") }
     }
 
-    private func sizePanel(for button: NSStatusBarButton) {
-        guard let window = button.window, let screen = window.screen else { return }
+    private func sizePanel() {
+        guard let button = statusItem.button, let window = button.window, let screen = window.screen else { return }
         let anchor = window.convertToScreen(button.convert(button.bounds, to: nil))
         let availableHeight = min(anchor.minY, screen.visibleFrame.maxY) - screen.visibleFrame.minY - 32
-        panel.panelHeight = min(640, max(1, availableHeight))
+        panel.maxHeight = max(240, availableHeight)
         let size = NSSize(width: 360, height: panel.panelHeight)
+        guard popover.contentSize != size else { return }
         popover.contentViewController?.preferredContentSize = size
         popover.contentViewController?.view.setFrameSize(size)
         popover.contentSize = size
@@ -679,8 +677,9 @@ private extension AppDelegate {
         else {
             refresh()
             syncPanelFromConfig()
+            panel.drawer = nil
             panel.topToken = UUID()
-            sizePanel(for: button)
+            sizePanel()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate(ignoringOtherApps: true)
             DispatchQueue.main.async { self.popover.contentViewController?.view.window?.makeFirstResponder(nil) }
