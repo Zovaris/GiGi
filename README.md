@@ -189,21 +189,28 @@ the app with `./bin/gigi reload`; restart the LaunchAgent after editing its conf
 
 ## Releasing
 
-`Resources/Info.plist` holds the version, and `make version` raises it, commits, tags `vX.Y.Z`
-and pushes both, so the tag always carries the version the app reports:
+`Resources/Info.plist` holds the version, and `make version` raises it, writes the matching
+[`CHANGELOG.md`](CHANGELOG.md) section, commits, tags `vX.Y.Z` and pushes both, so the tag always
+carries the version the app reports:
 
 ```bash
-make version                 # 2.0.0 -> 2.0.1
-make version BUMP=minor      # -> 2.1.0
+make version                 # patch: 0.2.0 -> 0.2.1
+make version BUMP=minor      # minor: -> 0.3.0
+make version BUMP=major      # breaking: -> 1.0.0
 make version VERSION=3.0.0   # pick the number yourself
-make version DRY=1           # print the plan and change nothing
+make version DRY=1           # print the plan and the new section, change nothing
 make version NO_PUSH=1       # commit and tag locally only
 ```
 
+The changelog entry groups the commits since the last tag into **Added**, **Fixed** and
+**Changed** from their `feat`, `fix` and `perf`/`refactor`/`revert` prefixes, and titles are
+capitalized. Review it with `make version DRY=1` before you cut the release.
+
 The release workflow runs on the tag: it checks the tag against the Info.plist, runs `make check`,
 builds, packages `GiGi-<version>-macos-<arch>.zip` next to its SHA-256, verifies the signature of
-the bundle inside the archive and publishes the GitHub release with the commits since the last tag.
-The bundle is ad-hoc signed, so Gatekeeper asks for a right-click → **Open** the first time.
+the bundle inside the archive and publishes the GitHub release with the `CHANGELOG.md` section for
+that version as its notes. The bundle is ad-hoc signed, so Gatekeeper asks for a right-click →
+**Open** the first time.
 
 ## Architecture
 

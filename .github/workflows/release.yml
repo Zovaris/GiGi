@@ -64,18 +64,26 @@ jobs:
       - name: notes
         run: |
           set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          pattern="$(printf '%s' "$version" | sed 's/\./[.]/g')"
+          mkdir -p dist
+          awk -v pat="^## ${pattern}( |\$)" '
+            $0 ~ pat { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > dist/changes.md
+          if [ ! -s dist/changes.md ]; then
+            echo "::error::CHANGELOG.md has no section for $version"
+            exit 1
+          fi
           previous="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
           {
-            echo "### Changes"
+            cat dist/changes.md
             echo
             if [ -n "$previous" ]; then
-              git log --no-merges --pretty='- %s' "$previous..$GITHUB_REF_NAME"
+              echo "Full diff: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$previous...$GITHUB_REF_NAME"
               echo
-              echo "**Full changelog**: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/compare/$previous...$GITHUB_REF_NAME"
-            else
-              git log --no-merges --pretty='- %s' "$GITHUB_REF_NAME"
             fi
-            echo
             echo "### Install"
             echo
             echo '```bash'
