@@ -16,6 +16,10 @@ func usage() {
       gigi until HH:MM | duration MIN | reload | menu | quit-app
       gigi panel [movement|settings]   open the panel, optionally on a drawer
 
+    UPDATES:
+      gigi update             compare this build with the latest GitHub release
+      gigi version            print the version of this build
+
     OPTIONS:
       --config PATH           config JSON (default ~/.config/gigi/config.json)
       --interval-min S        minimum seconds between moves (default 45)
@@ -285,6 +289,36 @@ func forwardToApp(_ request: String, hint: String) {
     }
 }
 
+func runUpdateCheck() {
+    let current = BuildVersion.current
+    print("GiGi \(current)")
+    guard current != BuildVersion.unknown else {
+        print("update: cannot tell which version this build is")
+        exit(1)
+    }
+    var answer: UpdateCheck?
+    UpdateChecker().check(current: current) { answer = $0 }
+    let deadline = Date().addingTimeInterval(15)
+    while answer == nil, Date() < deadline {
+        RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+    }
+    guard let outcome = answer else {
+        print("update: cannot check (GitHub did not answer in time)")
+        exit(1)
+    }
+    switch outcome {
+    case .upToDate:
+        print("update: up to date")
+    case .available(let release):
+        print("update: \(release.version) is available")
+        print("  \(release.pageURL)")
+        print("  brew upgrade --cask sthbryan/tap/gigi")
+    case .failed(let reason):
+        print("update: cannot check (\(reason))")
+        exit(1)
+    }
+}
+
 let options = parseOptions(Array(CommandLine.arguments.dropFirst()))
 switch options.command {
 case "help":
@@ -298,6 +332,12 @@ case "once":
 
 case "run", "start-daemon":
     runLoop(options)
+
+case "version", "--version":
+    print(BuildVersion.current)
+
+case "update":
+    runUpdateCheck()
 
 case "status":
     if let reply = ControlIPC.send("status") {
