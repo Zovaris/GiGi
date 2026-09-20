@@ -4,6 +4,7 @@ import Foundation
 struct TimerTests {
     static func main() {
         BatteryTests.run()
+        AppConditionTests.run()
         let engine = Engine(config: .default)
         let now = Date()
         engine.start(reason: "timer test")
