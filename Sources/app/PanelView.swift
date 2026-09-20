@@ -303,7 +303,7 @@ struct PanelView: View {
                         Text(L("minutes")).font(.subheadline).foregroundStyle(.secondary)
                     } else if model.timerKind == "until" {
                         Text(L("End time")).font(.subheadline)
-                        timePickers($model.until, label: L("End time"), minuteStep: 1, onChange: model.timerChanged)
+                        timePickers($model.until, label: L("End time"), onChange: model.timerChanged)
                     } else {
                         Text(L("Runs until you stop it"))
                             .font(.subheadline).foregroundStyle(.secondary)
@@ -610,11 +610,11 @@ struct PanelView: View {
         }
     }
 
-    private func timePickers(_ date: Binding<Date>, label: String, minuteStep: Int = 5, onChange: @escaping () -> Void) -> some View {
+    private func timePickers(_ date: Binding<Date>, label: String, onChange: @escaping () -> Void) -> some View {
         let calendar = Calendar.current
         let hour = calendar.component(.hour, from: date.wrappedValue)
         let minute = calendar.component(.minute, from: date.wrappedValue)
-        let minutes = Set(stride(from: 0, to: 60, by: minuteStep)).union([minute]).sorted()
+        let minutes = Set(stride(from: 0, to: 60, by: 5)).union([minute]).sorted()
         return HStack(spacing: 3) {
             Picker(String(format: L("%@ hour"), label), selection: Binding(get: { hour }, set: { value in
                 date.wrappedValue = time(of: date.wrappedValue, hour: value, minute: minute)
