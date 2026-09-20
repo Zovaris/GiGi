@@ -75,6 +75,48 @@ func postMouseMove(to point: CGPoint, source: CGEventSource?) {
 }
 
 @discardableResult
+func clickMouse(_ mode: String, stateID: CGEventSourceStateID?, at point: CGPoint? = nil) -> Bool {
+    guard mode != "none", let location = point ?? CGEvent(source: nil)?.location else { return false }
+    let source = stateID.flatMap { CGEventSource(stateID: $0) }
+    let (down, up, button): (CGEventType, CGEventType, CGMouseButton)
+    switch mode {
+    case "right": (down, up, button) = (.rightMouseDown, .rightMouseUp, .right)
+    default: (down, up, button) = (.leftMouseDown, .leftMouseUp, .left)
+    }
+    for index in 1...(mode == "double" ? 2 : 1) {
+        guard let downEvent = CGEvent(mouseEventSource: source, mouseType: down,
+                                      mouseCursorPosition: location, mouseButton: button),
+              let upEvent = CGEvent(mouseEventSource: source, mouseType: up,
+                                    mouseCursorPosition: location, mouseButton: button) else { return false }
+        downEvent.setIntegerValueField(.mouseEventClickState, value: Int64(index))
+        upEvent.setIntegerValueField(.mouseEventClickState, value: Int64(index))
+        downEvent.post(tap: .cghidEventTap)
+        upEvent.post(tap: .cghidEventTap)
+        usleep(40_000)
+    }
+    return true
+}
+
+@discardableResult
+func scrollMouse(_ mode: String, stateID: CGEventSourceStateID?) -> Bool {
+    let lines: [Int32]
+    switch mode {
+    case "ping": lines = [1, -1]
+    case "down": lines = [3]
+    case "up": lines = [-3]
+    default: return false
+    }
+    let source = stateID.flatMap { CGEventSource(stateID: $0) }
+    for line in lines {
+        guard let event = CGEvent(scrollWheelEvent2Source: source, units: .line, wheelCount: 1,
+                                  wheel1: line, wheel2: 0, wheel3: 0) else { return false }
+        event.post(tap: .cghidEventTap)
+        usleep(30_000)
+    }
+    return true
+}
+
+@discardableResult
 func jiggle(distance: Double, stateID: CGEventSourceStateID?) -> Bool {
     guard let current = CGEvent(source: nil)?.location else {
         Log.error("jiggle: cannot read cursor position")

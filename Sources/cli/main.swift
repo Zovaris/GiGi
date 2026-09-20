@@ -21,6 +21,8 @@ func usage() {
       --interval-max S        maximum seconds between moves (default 90)
       --distance PX           cursor offset in pixels (default 2)
       --idle-threshold S      only move when the user has been idle for S seconds (default 40)
+      --click MODE            extra click per move: none|single|double|right
+      --scroll MODE           extra scroll per move: none|ping|down|up
       --until HH:MM           stop at that time (today, or tomorrow if already past)
       --duration MIN          stop after N minutes
       --no-assert             do not create the display assertion
@@ -40,6 +42,8 @@ struct Options {
     var intervalMax: Double?
     var distance: Double?
     var idleThreshold: Double?
+    var click: String?
+    var scroll: String?
     var until: String?
     var durationMinutes: Double?
     var noAssert = false
@@ -79,6 +83,10 @@ func parseOptions(_ args: [String]) -> Options {
             options.distance = nextValue("--distance").flatMap(Double.init)
         case "--idle-threshold":
             options.idleThreshold = nextValue("--idle-threshold").flatMap(Double.init)
+        case "--click":
+            options.click = nextValue("--click")
+        case "--scroll":
+            options.scroll = nextValue("--scroll")
         case "--until":
             options.until = nextValue("--until")
         case "--duration":
@@ -120,6 +128,8 @@ func makeEngine(_ options: Options) -> Engine {
     if let value = options.intervalMax { config.intervalSeconds[1] = value }
     if let value = options.distance { config.jiggleDistancePixels = value }
     if let value = options.idleThreshold { config.idleThresholdSeconds = value }
+    if let value = options.click { config.clickMode = value }
+    if let value = options.scroll { config.scrollMode = value }
     if options.noAssert { config.preventDisplaySleep = false }
     let engine = Engine(config: config)
     if options.ignoreSchedule { engine.mode = .always }
@@ -212,6 +222,7 @@ func runLoop(_ options: Options) {
 
     Log.info("starting daemon: interval \(Int(config.intervalSeconds[0]))-\(Int(config.intervalSeconds[1]))s, "
              + "distance \(config.jiggleDistancePixels)px, idle>\(Int(config.idleThresholdSeconds))s, "
+             + "clicks \(config.clickMode), scroll \(config.scrollMode), "
              + "schedule \(engine.mode == .always ? "ignored" : (config.schedule.enabled ? "ON" : "OFF"))")
     engine.setDeadline(deadline)
     engine.start(reason: "CLI run")

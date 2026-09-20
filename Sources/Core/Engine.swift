@@ -104,6 +104,7 @@ final class Engine {
         guard ensureAccessibility() else { return false }
         let moved = jiggle(distance: config.jiggleDistancePixels, stateID: eventSource)
         if moved {
+            postExtraActivity()
             jiggles += 1
             lastJiggle = Date()
             lastIdle = userIdleSeconds()
@@ -153,6 +154,7 @@ final class Engine {
             if sinceLast >= interval && idle >= config.idleThresholdSeconds {
                 if ensureAccessibility() {
                     if jiggle(distance: config.jiggleDistancePixels, stateID: eventSource) {
+                        postExtraActivity()
                         jiggles += 1
                         lastJiggle = Date()
                         Log.info(String(format: "jiggle #%d (idle %.0fs, wait %.0fs)", jiggles, idle, interval))
@@ -162,6 +164,15 @@ final class Engine {
             }
         }
         return true
+    }
+
+    private func postExtraActivity() {
+        if config.clickMode != "none", clickMouse(config.clickMode, stateID: eventSource) {
+            Log.info("activity: click \(config.clickMode) at the current pointer position")
+        }
+        if config.scrollMode != "none", scrollMouse(config.scrollMode, stateID: eventSource) {
+            Log.info("activity: scroll \(config.scrollMode)")
+        }
     }
 
     private func ensureAccessibility() -> Bool {
