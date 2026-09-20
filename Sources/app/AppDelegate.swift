@@ -404,6 +404,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         var details: [String] = [status.displayAssertion ? L("screen on") : L("screen normal")]
+        if status.dimmed {
+            details.append(String(format: L("dimmed %d%%"), Int((engine.config.dimBrightness * 100).rounded())))
+        }
         if let idle = status.lastIdle {
             details.append(String(format: L("idle %.0fs"), idle))
         }
@@ -501,6 +504,8 @@ private extension AppDelegate {
         panel.clickMode = engine.config.clickMode
         panel.scrollMode = engine.config.scrollMode
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
+        panel.dimPreview = { [weak self] in self?.previewPanelDim() }
+        panel.dimChanged = { [weak self] in self?.applyPanelDim() }
         panel.recordHotkey = { [weak self] in self?.toggleHotkeyRecording() }
         panel.accessibility = { [weak self] in self?.openAccessibilityPane() }
         panel.move = { [weak self] in self?.moveNow() }
@@ -523,6 +528,8 @@ private extension AppDelegate {
         panel.intervalHigh = engine.config.intervalSeconds[1]
         panel.clickMode = engine.config.clickMode
         panel.scrollMode = engine.config.scrollMode
+        panel.dimWhileActive = engine.config.dimWhileActive
+        panel.dimBrightness = engine.config.dimBrightness
         panel.hotkey = engine.config.hotkey
         panel.hotkeyDisplay = HotkeyCenter.shared.registered?.display ?? ""
     }
@@ -632,6 +639,19 @@ private extension AppDelegate {
         panel.error = saveConfig(config, path: AppDelegate.configPathFromArguments())
             ? nil : L("Could not write the configuration file")
         syncPanelFromConfig()
+        refresh()
+    }
+
+    private func previewPanelDim() {
+        engine.setDim(enabled: panel.dimWhileActive, brightness: panel.dimBrightness)
+        panel.dimBrightness = engine.config.dimBrightness
+        panel.status = engine.status
+    }
+
+    private func applyPanelDim() {
+        previewPanelDim()
+        panel.error = saveConfig(engine.config, path: AppDelegate.configPathFromArguments())
+            ? nil : L("Could not write the configuration file")
         refresh()
     }
 

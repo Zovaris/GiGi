@@ -53,6 +53,8 @@ final class PanelModel: ObservableObject {
     @Published var intervalHigh: Double = 90
     @Published var clickMode = "none"
     @Published var scrollMode = "none"
+    @Published var dimWhileActive = false
+    @Published var dimBrightness: Double = 0.35
     @Published var hotkey: String = Hotkey.default.config
     @Published var hotkeyDisplay: String = Hotkey.default.display
     @Published var recordingHotkey = false
@@ -61,11 +63,15 @@ final class PanelModel: ObservableObject {
     @Published var topToken = UUID()
     @Published var error: String?
 
+    var brightnessSupported: Bool { status.brightness != nil }
+
     var toggle: () -> Void = {}
     var screen: () -> Void = {}
     var modeChanged: (String) -> Void = { _ in }
     var timerChanged: () -> Void = {}
     var movementChanged: () -> Void = {}
+    var dimPreview: () -> Void = {}
+    var dimChanged: () -> Void = {}
     var recordHotkey: () -> Void = {}
     var accessibility: () -> Void = {}
     var move: () -> Void = {}
@@ -411,6 +417,60 @@ struct PanelView: View {
         .controlSize(.small)
     }
 
+    private var dimSetting: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                Image(systemName: model.dimWhileActive ? "sun.min" : "sun.max")
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L("Dim the display")).font(.subheadline.weight(.medium))
+                    Text(dimSummary).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: Binding(get: { model.dimWhileActive }, set: { value in
+                    model.dimWhileActive = value
+                    model.dimChanged()
+                }))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .accessibilityLabel(L("Dim the display"))
+                .disabled(!model.preventDisplaySleep || !model.brightnessSupported)
+                .pointerCursor()
+            }
+            HStack(spacing: 8) {
+                Image(systemName: "sun.min")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                Slider(value: Binding(get: { model.dimBrightness }, set: { value in
+                    model.dimBrightness = value
+                    model.dimPreview()
+                }), in: 0.05...1, onEditingChanged: { editing in
+                    if !editing { model.dimChanged() }
+                })
+                .controlSize(.small)
+                .disabled(!model.dimWhileActive || !model.preventDisplaySleep)
+                .accessibilityLabel(L("Brightness"))
+                .pointerCursor()
+                Image(systemName: "sun.max.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                Text(String(format: "%d%%", Int((model.dimBrightness * 100).rounded())))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, alignment: .trailing)
+            }
+            .padding(.leading, 2)
+        }
+        .controlSize(.small)
+    }
+
+    private var dimSummary: String {
+        if !model.brightnessSupported { return L("This display does not allow brightness control") }
+        if !model.preventDisplaySleep { return L("Keep the display awake to dim it") }
+        guard model.dimWhileActive else { return L("Normal brightness") }
+        return String(format: L("Dimmed to %d%% while GiGi is active"), Int((model.dimBrightness * 100).rounded()))
+    }
+
     private var modeCard: some View {
         HStack {
             Label(L("Mode"), systemImage: "arrow.triangle.2.circlepath")
@@ -460,6 +520,7 @@ struct PanelView: View {
                 .pointerCursor()
             }
             displaySetting
+            dimSetting
             Divider()
             shortcutRow
             Divider()

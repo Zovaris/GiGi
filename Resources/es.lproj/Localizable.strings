@@ -97,3 +97,17 @@
 "Advanced" = "Avanzado";
 
 "Close" = "Cerrar";
+
+"Dim the display" = "Atenuar la pantalla";
+
+"Dimmed to %d%% while GiGi is active" = "Atenuada al %d%% mientras GiGi está activo";
+
+"Brightness" = "Brillo";
+
+"dimmed %d%%" = "atenuada %d%%";
+
+"Normal brightness" = "Brillo normal";
+
+"Keep the display awake to dim it" = "Mantén la pantalla encendida para atenuarla";
+
+"This display does not allow brightness control" = "Esta pantalla no permite controlar el brillo";

@@ -97,3 +97,17 @@
 "Advanced" = "Advanced";
 
 "Close" = "Close";
+
+"Dim the display" = "Dim the display";
+
+"Dimmed to %d%% while GiGi is active" = "Dimmed to %d%% while GiGi is active";
+
+"Brightness" = "Brightness";
+
+"dimmed %d%%" = "dimmed %d%%";
+
+"Normal brightness" = "Normal brightness";
+
+"Keep the display awake to dim it" = "Keep the display awake to dim it";
+
+"This display does not allow brightness control" = "This display does not allow brightness control";
