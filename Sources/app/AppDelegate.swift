@@ -540,7 +540,7 @@ private extension AppDelegate {
         guard let window = button.window, let screen = window.screen else { return }
         let anchor = window.convertToScreen(button.convert(button.bounds, to: nil))
         let availableHeight = min(anchor.minY, screen.visibleFrame.maxY) - screen.visibleFrame.minY - 32
-        panel.panelHeight = min(560, max(1, availableHeight))
+        panel.panelHeight = min(640, max(1, availableHeight))
         let size = NSSize(width: 360, height: panel.panelHeight)
         popover.contentViewController?.preferredContentSize = size
         popover.contentViewController?.view.setFrameSize(size)
@@ -560,9 +560,12 @@ private extension AppDelegate {
         if popover.isShown { popover.performClose(nil) }
         else {
             refresh()
+            syncPanelFromConfig()
+            panel.topToken = UUID()
             sizePanel(for: button)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate(ignoringOtherApps: true)
+            DispatchQueue.main.async { self.popover.contentViewController?.view.window?.makeFirstResponder(nil) }
         }
     }
 
