@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PLIST="$ROOT/Resources/Info.plist"
+CHANGELOG="$ROOT/CHANGELOG.md"
 BUMP=patch
 TARGET=""
 DRY=0
@@ -22,6 +23,29 @@ MSG
 normalize() {
   IFS=. read -r a b c <<< "$1"
   echo "${a:-0}.${b:-0}.${c:-0}"
+}
+
+upper_first() {
+  printf '%s%s' "$(printf '%s' "${1:0:1}" | tr '[:lower:]' '[:upper:]')" "${1:1}"
+}
+
+bullets() {
+  local line
+  for line in "$@"; do printf -- '- %s\n' "$line"; done
+}
+
+insert_section() {
+  local file="$1" body="$2" tmp chunk
+  tmp="$(mktemp)"
+  chunk="$tmp.section"
+  printf '%s\n' "$body" > "$chunk"
+  awk -v src="$chunk" '
+    !inserted && /^## / { while ((getline line < src) > 0) print line; print ""; inserted = 1 }
+    { print }
+    END { if (!inserted) { print ""; while ((getline line < src) > 0) print line } }
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+  rm -f "$chunk"
 }
 
 while [ $# -gt 0 ]; do
@@ -56,13 +80,43 @@ fi
 tag="v$next"
 message="chore: release $tag"
 branch="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)"
+today="$(date +%F)"
+previous="$(git -C "$ROOT" describe --tags --abbrev=0 HEAD 2>/dev/null || true)"
+
+added=()
+fixed=()
+changed=()
+while IFS= read -r subject; do
+  case "$subject" in
+    *": "*) ;;
+    *) continue ;;
+  esac
+  text="$(upper_first "${subject#*: }")"
+  type="${subject%%:*}"
+  type="${type%%(*}"
+  case "$type" in
+    feat) added+=("$text") ;;
+    fix) fixed+=("$text") ;;
+    perf|refactor|revert) changed+=("$text") ;;
+  esac
+done < <(git -C "$ROOT" log --no-merges --pretty=%s ${previous:+"$previous.."}HEAD)
+
+entries=$(( ${#added[@]} + ${#fixed[@]} + ${#changed[@]} ))
+section="## $next - $today"
+if [ "${#added[@]}" -gt 0 ]; then section+=$'\n\n**Added**\n\n'"$(bullets "${added[@]}")"; fi
+if [ "${#fixed[@]}" -gt 0 ]; then section+=$'\n\n**Fixed**\n\n'"$(bullets "${fixed[@]}")"; fi
+if [ "${#changed[@]}" -gt 0 ]; then section+=$'\n\n**Changed**\n\n'"$(bullets "${changed[@]}")"; fi
+if [ "$entries" -eq 0 ]; then section+=$'\n\n'"$(bullets "Maintenance release")"; fi
 
 if [ "$DRY" = "1" ]; then
-  echo "version:  $current -> $next"
-  echo "plist:    Resources/Info.plist  CFBundleShortVersionString and CFBundleVersion"
-  echo "commit:   $message"
-  echo "tag:      $tag (annotated)"
-  echo "push:     $([ "$PUSH" = "1" ] && echo "origin $branch and $tag" || echo "no")"
+  echo "version:   $current -> $next"
+  echo "plist:     Resources/Info.plist  CFBundleShortVersionString and CFBundleVersion"
+  echo "changelog: CHANGELOG.md  $entries entries since ${previous:-the first commit}"
+  echo "commit:    $message"
+  echo "tag:       $tag (annotated)"
+  echo "push:      $([ "$PUSH" = "1" ] && echo "origin $branch and $tag" || echo "no")"
+  echo
+  printf '%s\n' "$section"
   exit 0
 fi
 
@@ -80,7 +134,11 @@ fi
 plutil -replace CFBundleShortVersionString -string "$next" "$PLIST"
 plutil -replace CFBundleVersion -string "$next" "$PLIST"
 
-git -C "$ROOT" add Resources/Info.plist
+[ -f "$CHANGELOG" ] || printf '# Changelog\n' > "$CHANGELOG"
+insert_section "$CHANGELOG" "$section"
+echo "changelog: added $entries entries for $next"
+
+git -C "$ROOT" add Resources/Info.plist CHANGELOG.md
 git -C "$ROOT" commit -q -m "$message"
 git -C "$ROOT" tag -a "$tag" -m "GiGi $tag"
 echo "committed $(git -C "$ROOT" rev-parse --short HEAD) and tagged $tag"
