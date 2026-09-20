@@ -9,19 +9,8 @@ First public release.
 
 **Added**
 
-- Notifications when GiGi stops on its own: timer, battery limit, missing permission
-- Battery limit, stopping at a threshold picked in the panel
-- Only while an app: gated on it running or being in front
-- Schedule window with hour and minute pickers plus weekday chips
-- Dimming while GiGi keeps the screen awake
-- Global shortcut to toggle GiGi, plus language and appearance
-- CLI and menu bar control, diagnostics, LaunchAgent installer
-
-**Fixed**
-
-- The panel reads its icon from the bundle, not the system lookup
-- `gigi status` reports waiting for an app instead of active
-
-**Changed**
-
-- Every hour, minute and battery picker moves in steps of five
+- Cursor jiggle and display dimming, keeping an idle Mac awake
+- Schedule window with weekday chips and hour and minute pickers
+- Safety stops: timer, battery threshold, or a chosen app not running or in front
+- Notifications when GiGi stops on its own
+- Menu bar control, global shortcut, CLI, LaunchAgent installer
