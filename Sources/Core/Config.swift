@@ -50,6 +50,22 @@ func defaultConfigURL() -> URL {
         .appendingPathComponent(".config/gigi/config.json")
 }
 
+func saveConfig(_ config: Config, path: String? = nil) -> Bool {
+    let url = path.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) } ?? defaultConfigURL()
+    do {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(config).write(to: url, options: .atomic)
+        Log.info("config: wrote \(url.path)")
+        return true
+    } catch {
+        Log.error("config: cannot write \(url.path): \(error.localizedDescription)")
+        return false
+    }
+}
+
 func loadConfig(path: String?) -> Config {
     let url = path.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) } ?? defaultConfigURL()
     guard FileManager.default.fileExists(atPath: url.path) else {
