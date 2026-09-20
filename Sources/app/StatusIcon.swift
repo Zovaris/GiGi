@@ -20,7 +20,7 @@ enum StatusIcon {
         return status.outOfSchedule ? .waiting : .active
     }
 
-    private static func drawCursor(ink: NSColor) {
+    private static func drawCursor(ink: NSColor, running: Bool) {
         ink.setFill()
         ink.setStroke()
         let cursor = NSBezierPath()
@@ -35,7 +35,14 @@ enum StatusIcon {
         cursor.curve(to: NSPoint(x: 7.8, y: 1.2), controlPoint1: NSPoint(x: 8.7, y: -0.1),
                      controlPoint2: NSPoint(x: 8, y: 0.2))
         cursor.close()
-        cursor.fill()
+        if running {
+            cursor.fill()
+        } else {
+            cursor.lineWidth = 1.5
+            cursor.lineJoinStyle = .round
+            cursor.stroke()
+        }
+        guard running else { return }
 
         let rays = NSBezierPath()
         rays.lineWidth = 1.7
@@ -51,11 +58,11 @@ enum StatusIcon {
         rays.stroke()
     }
 
-    static func image(for state: State, appearance: NSAppearance? = nil) -> NSImage {
+    static func image(for state: State, appearance: NSAppearance? = nil, running: Bool? = nil) -> NSImage {
         let dark = appearance?.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let ink = dark ? NSColor.white : NSColor.black
         let image = NSImage(size: NSSize(width: 22, height: 20), flipped: false) { _ in
-            drawCursor(ink: ink)
+            drawCursor(ink: ink, running: running ?? (state != .inactive))
             if state != .inactive {
                 NSGraphicsContext.saveGraphicsState()
                 NSGraphicsContext.current?.compositingOperation = .copy

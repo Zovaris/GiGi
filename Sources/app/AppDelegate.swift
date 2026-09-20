@@ -383,7 +383,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                        engine.config.intervalSeconds[0], engine.config.intervalSeconds[1])
 
         let indicator = StatusIcon.state(for: status)
-        statusItem.button?.image = StatusIcon.image(for: indicator, appearance: statusItem.button?.effectiveAppearance)
+        statusItem.button?.image = StatusIcon.image(for: indicator, appearance: statusItem.button?.effectiveAppearance, running: status.running)
         let description = "GiGi: " + L(indicator.label)
         statusItem.button?.toolTip = description + " · " + String(format: L("%d movements"), status.jiggles)
         statusItem.button?.setAccessibilityLabel(description)
