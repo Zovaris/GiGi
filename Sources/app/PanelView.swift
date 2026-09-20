@@ -59,6 +59,8 @@ final class PanelModel: ObservableObject {
     @Published var idleThreshold: Double = 40
     @Published var intervalLow: Double = 45
     @Published var intervalHigh: Double = 90
+    @Published var motionPattern = Motion.defaultPattern
+    @Published var motionRadius = Motion.defaultRadiusPixels
     @Published var clickMode = "none"
     @Published var scrollMode = "none"
     @Published var dimWhileActive = false
@@ -358,6 +360,30 @@ struct PanelView: View {
                 NumberField(value: $model.intervalHigh, range: 1...3600, commit: model.movementChanged)
                 Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
                 Spacer(minLength: 0)
+            }
+            HStack(spacing: 6) {
+                Text(L("Pattern")).font(.subheadline).frame(width: 108, alignment: .leading)
+                Picker(L("Pattern"), selection: Binding(get: { model.motionPattern }, set: {
+                    model.motionPattern = $0
+                    model.movementChanged()
+                })) {
+                    ForEach(Motion.patterns, id: \.self) { pattern in
+                        Text(Motion.label(pattern)).tag(pattern)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .pointerCursor()
+                Spacer(minLength: 0)
+            }
+            if model.motionPattern != Motion.defaultPattern {
+                HStack(spacing: 6) {
+                    Text(L("Radius")).font(.subheadline).frame(width: 108, alignment: .leading)
+                    NumberField(value: $model.motionRadius, range: Motion.radiusRange, width: 60,
+                                commit: model.movementChanged)
+                    Text(L("px")).font(.caption).foregroundStyle(.secondary).fixedSize()
+                    Spacer(minLength: 0)
+                }
             }
             HStack(spacing: 6) {
                 Text(L("Clicks")).font(.subheadline).frame(width: 108, alignment: .leading)

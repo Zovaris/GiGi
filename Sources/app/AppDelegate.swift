@@ -396,9 +396,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panel.preventDisplaySleep = engine.preventDisplaySleep
         panel.mode = engine.mode.rawValue
         panel.login = SMAppService.mainApp.status == .enabled
-        panel.intervalSummary = String(format: L("After %.0fs idle · every %.0f–%.0fs"),
-                                       engine.config.idleThresholdSeconds,
-                                       engine.config.intervalSeconds[0], engine.config.intervalSeconds[1])
+        let window = String(format: L("After %.0fs idle · every %.0f–%.0fs"),
+                            engine.config.idleThresholdSeconds,
+                            engine.config.intervalSeconds[0], engine.config.intervalSeconds[1])
+        panel.intervalSummary = engine.config.motionPattern == Motion.defaultPattern
+            ? window
+            : Motion.label(engine.config.motionPattern) + " · " + window
 
         let indicator = StatusIcon.state(for: status)
         statusItem.button?.image = StatusIcon.image(for: indicator, running: status.running)
@@ -554,6 +557,8 @@ private extension AppDelegate {
         panel.idleThreshold = engine.config.idleThresholdSeconds
         panel.intervalLow = engine.config.intervalSeconds[0]
         panel.intervalHigh = engine.config.intervalSeconds[1]
+        panel.motionPattern = engine.config.motionPattern
+        panel.motionRadius = engine.config.motionRadiusPixels
         panel.clickMode = engine.config.clickMode
         panel.scrollMode = engine.config.scrollMode
         panel.dimWhileActive = engine.config.dimWhileActive
@@ -676,6 +681,9 @@ private extension AppDelegate {
         let low = clampSeconds(panel.intervalLow, fallback: config.intervalSeconds[0])
         let high = clampSeconds(panel.intervalHigh, fallback: config.intervalSeconds[1])
         config.intervalSeconds = [min(low, high), max(low, high)]
+        config.motionPattern = Motion.patterns.contains(panel.motionPattern)
+            ? panel.motionPattern : Motion.defaultPattern
+        config.motionRadiusPixels = Motion.clampRadius(panel.motionRadius)
         config.clickMode = panel.clickMode
         config.scrollMode = panel.scrollMode
         engine.apply(config: config)

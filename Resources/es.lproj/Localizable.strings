@@ -76,6 +76,13 @@
 "Movement" = "Movimiento";
 "Idle delay" = "Tras inactividad";
 "Move every" = "Mover cada";
+"Pattern" = "Patrón";
+"Jiggle" = "Sacudida";
+"Circle" = "Círculo";
+"Square" = "Cuadrado";
+"Figure eight" = "Ocho";
+"Radius" = "Radio";
+"px" = "px";
 "seconds" = "segundos";
 "Apply movement" = "Aplicar movimiento";
 "Could not write the configuration file" = "No se pudo escribir el archivo de configuración";

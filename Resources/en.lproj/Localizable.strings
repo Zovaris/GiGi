@@ -76,6 +76,13 @@
 "Movement" = "Movement";
 "Idle delay" = "Idle delay";
 "Move every" = "Move every";
+"Pattern" = "Pattern";
+"Jiggle" = "Jiggle";
+"Circle" = "Circle";
+"Square" = "Square";
+"Figure eight" = "Figure eight";
+"Radius" = "Radius";
+"px" = "px";
 "seconds" = "seconds";
 "Apply movement" = "Apply movement";
 "Could not write the configuration file" = "Could not write the configuration file";
