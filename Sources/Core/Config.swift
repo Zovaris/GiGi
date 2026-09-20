@@ -24,6 +24,7 @@ struct Config: Codable {
     var batteryLimitEnabled: Bool
     var batteryLimitPercent: Int
     var hotkey: String
+    var appCondition: AppCondition
     var schedule: Schedule
 
     static let clickModes = ["none", "single", "double", "right"]
@@ -43,6 +44,7 @@ struct Config: Codable {
         batteryLimitEnabled: false,
         batteryLimitPercent: 20,
         hotkey: Hotkey.default.config,
+        appCondition: AppCondition(),
         schedule: Schedule(
             enabled: false,
             days: ["mon", "tue", "wed", "thu", "fri"],
@@ -66,6 +68,9 @@ struct Config: Codable {
             config.hotkey = Config.default.hotkey
         }
         config.batteryLimitPercent = min(100, max(1, config.batteryLimitPercent))
+        if !["running", "frontmost"].contains(config.appCondition.mode) { config.appCondition.mode = "running" }
+        var appIDs = Set<String>()
+        config.appCondition.apps = config.appCondition.apps.filter { !$0.id.isEmpty && appIDs.insert($0.id).inserted }
         let selected = Set(config.schedule.days.map { $0.lowercased() })
         config.schedule.days = weekdayNames.filter { selected.contains($0) }
         return config
@@ -88,6 +93,7 @@ extension Config {
         batteryLimitEnabled = try container.decodeIfPresent(Bool.self, forKey: .batteryLimitEnabled) ?? fallback.batteryLimitEnabled
         batteryLimitPercent = try container.decodeIfPresent(Int.self, forKey: .batteryLimitPercent) ?? fallback.batteryLimitPercent
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? fallback.hotkey
+        appCondition = try container.decodeIfPresent(AppCondition.self, forKey: .appCondition) ?? fallback.appCondition
         schedule = try container.decodeIfPresent(Schedule.self, forKey: .schedule) ?? fallback.schedule
     }
 }

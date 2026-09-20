@@ -17,6 +17,7 @@ final class Engine {
         var displayAssertion: Bool = false
         var dimmed: Bool = false
         var brightness: Double?
+        var waitingForApp: Bool = false
         var outOfSchedule: Bool = false
         var deadline: Date?
         var nextTransition: Date?
@@ -26,6 +27,8 @@ final class Engine {
     private(set) var config: Config
     private let power = PowerAssertions()
     var brightness: Brightness = .system
+    var readAppActivity: () -> AppActivity = AppActivity.current
+    private var waitingForApp = false
     var readBattery: () -> BatteryState? = BatteryState.current
     private var batteryStopped = false
 
@@ -55,6 +58,7 @@ final class Engine {
 
     func start(reason: String) {
         guard !running else { return }
+        waitingForApp = false
         batteryStopped = false
         running = true
         windowActive = false
@@ -148,16 +152,18 @@ final class Engine {
             return false
         }
 
-        let allowed = (mode == .always) || config.schedule.allows(now)
-        if allowed != windowActive {
+        let wasWaitingForApp = waitingForApp
+        waitingForApp = config.appCondition.enabled && !config.appCondition.allows(readAppActivity())
+        let allowed = !waitingForApp && ((mode == .always) || config.schedule.allows(now))
+        if allowed != windowActive || wasWaitingForApp != waitingForApp {
             windowActive = allowed
             if allowed {
-                Log.info("engine: entering active schedule window")
+                Log.info("engine: activity conditions met")
                 if preventDisplaySleep { power.startDisplayAssertion() }
                 if preventDisplaySleep && wakeOnWindowStart { power.declareUserActivity() }
                 lastJiggle = nil
             } else {
-                Log.info("engine: outside schedule window, releasing assertion")
+                Log.info("engine: waiting for activity conditions, releasing assertion")
                 power.stopDisplayAssertion()
             }
             syncBrightness()
@@ -255,6 +261,7 @@ final class Engine {
             displayAssertion: power.hasDisplayAssertion,
             dimmed: appliedBrightness != nil,
             brightness: brightness.current(),
+            waitingForApp: running && waitingForApp,
             outOfSchedule: running && mode == .schedule && !config.schedule.allows(Date()),
             deadline: deadline,
             nextTransition: config.schedule.nextTransition(after: Date()),
@@ -265,6 +272,7 @@ final class Engine {
     var shortStatus: String {
         let status = status
         if !status.running { return L("inactive") }
+        if status.waitingForApp { return L("Waiting for selected app") }
         if status.outOfSchedule { return L("inactive (out of schedule)") }
         return L("active")
     }
