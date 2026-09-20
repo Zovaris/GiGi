@@ -92,3 +92,6 @@ if [ "$PUSH" = "1" ]; then
 else
   echo "not pushed: run 'git push origin $branch && git push origin $tag' when you are ready"
 fi
+
+"$ROOT/build.sh" "$next" > /dev/null
+echo "rebuilt bin/gigi and app/GiGi.app with version $next"
