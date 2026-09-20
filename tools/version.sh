@@ -82,6 +82,11 @@ message="chore: release $tag"
 branch="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)"
 today="$(date +%F)"
 previous="$(git -C "$ROOT" describe --tags --abbrev=0 HEAD 2>/dev/null || true)"
+if ! git -C "$ROOT" rev-parse -q --verify "refs/tags/v$current" > /dev/null 2>&1; then
+  released="$(git -C "$ROOT" log -1 --format=%H \
+    --grep="^$(printf 'chore: release v%s' "$current" | sed 's/\./[.]/g')$" 2>/dev/null || true)"
+  [ -n "$released" ] && previous="$released"
+fi
 
 added=()
 fixed=()
