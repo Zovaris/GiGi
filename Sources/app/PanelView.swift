@@ -347,15 +347,15 @@ struct PanelView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
                 Text(L("Idle delay")).font(.subheadline).frame(width: 108, alignment: .leading)
-                secondsField($model.idleThreshold)
+                NumberField(value: $model.idleThreshold, range: 1...3600, commit: model.movementChanged)
                 Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
                 Spacer(minLength: 0)
             }
             HStack(spacing: 6) {
                 Text(L("Move every")).font(.subheadline).frame(width: 108, alignment: .leading)
-                secondsField($model.intervalLow)
+                NumberField(value: $model.intervalLow, range: 1...3600, commit: model.movementChanged)
                 Text("–").foregroundStyle(.secondary)
-                secondsField($model.intervalHigh)
+                NumberField(value: $model.intervalHigh, range: 1...3600, commit: model.movementChanged)
                 Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
                 Spacer(minLength: 0)
             }
@@ -405,7 +405,6 @@ struct PanelView: View {
                 Spacer(minLength: 8)
             }
         }
-        .onSubmit { model.movementChanged() }
     }
 
     private var shortcutRow: some View {
@@ -424,13 +423,6 @@ struct PanelView: View {
                 Button(L("Record"), action: model.recordHotkey).controlSize(.small).pointerCursor()
             }
         }
-    }
-
-    private func secondsField(_ value: Binding<Double>) -> some View {
-        TextField("", value: value, format: .number.precision(.fractionLength(0)))
-            .textFieldStyle(.roundedBorder)
-            .multilineTextAlignment(.trailing)
-            .frame(width: 52)
     }
 
     private var displaySetting: some View {
@@ -929,6 +921,51 @@ struct PanelView: View {
         Label(title, systemImage: systemImage)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.primary)
+    }
+}
+
+private struct NumberField: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    var width: CGFloat = 60
+    let commit: () -> Void
+
+    @State private var text = ""
+    @FocusState private var editing: Bool
+
+    var body: some View {
+        TextField("", text: $text)
+            .textFieldStyle(.roundedBorder)
+            .multilineTextAlignment(.trailing)
+            .monospacedDigit()
+            .frame(width: width)
+            .focused($editing)
+            .onAppear { text = display(value) }
+            .onChange(of: value) { _, new in
+                if !editing { text = display(new) }
+            }
+            .onChange(of: editing) { _, isEditing in
+                if !isEditing { apply() }
+            }
+            .onSubmit { apply() }
+    }
+
+    private func display(_ number: Double) -> String {
+        guard number.isFinite else { return "0" }
+        return String(format: "%.0f", number)
+    }
+
+    private func apply() {
+        let typed = text.filter(\.isNumber)
+        guard let parsed = Double(typed) else {
+            text = display(value)
+            return
+        }
+        let limited = min(range.upperBound, max(range.lowerBound, parsed.rounded()))
+        text = display(limited)
+        guard limited != value else { return }
+        value = limited
+        commit()
     }
 }
 
