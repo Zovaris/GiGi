@@ -9,13 +9,20 @@ final class PanelModel: ObservableObject {
     @Published var minutes: Double = 15
     @Published var until = Date()
     @Published var login = false
+    @Published var idleThreshold: Double = 40
+    @Published var intervalLow: Double = 45
+    @Published var intervalHigh: Double = 90
     @Published var intervalSummary = ""
+    @Published var movementExpanded = true
+    @Published var topToken = UUID()
     @Published var error: String?
 
     var toggle: () -> Void = {}
     var screen: () -> Void = {}
     var modeChanged: (String) -> Void = { _ in }
     var timerChanged: () -> Void = {}
+    var movementChanged: () -> Void = {}
+    var movementToggled: (Bool) -> Void = { _ in }
     var accessibility: () -> Void = {}
     var move: () -> Void = {}
     var reload: () -> Void = {}
@@ -37,29 +44,36 @@ struct PanelView: View {
         VStack(spacing: 0) {
             header
             Divider().opacity(0.45)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    timerCard
-                    displayCard
-                    modeCard
-                    if let error = model.error {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .font(.footnote)
-                            .foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        timerCard
+                        movementCard
+                        displayCard
+                        modeCard
+                        if let error = model.error {
+                            Label(error, systemImage: "exclamationmark.triangle.fill")
+                                .font(.footnote)
+                                .foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if !model.status.accessibilityTrusted { permissionCard }
+                            DisclosureGroup {
+                                settings
+                            } label: {
+                                Label(L("Settings"), systemImage: "gearshape")
+                                    .font(.headline)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(.quaternary.opacity(0.34), in: RoundedRectangle(cornerRadius: 12))
                     }
-                    if !model.status.accessibilityTrusted { permissionCard }
-                    DisclosureGroup {
-                        settings
-                    } label: {
-                        Label(L("Settings"), systemImage: "gearshape")
-                            .font(.headline)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(.quaternary.opacity(0.34), in: RoundedRectangle(cornerRadius: 12))
+                    .padding(14)
+                    .id("panel-top")
                 }
-                .padding(14)
+                .onChange(of: model.topToken) { _, _ in
+                    proxy.scrollTo("panel-top", anchor: .top)
+                }
             }
             Divider().opacity(0.45)
             footer
@@ -149,6 +163,47 @@ struct PanelView: View {
             }
         }
         .cardStyle()
+    }
+
+    private var movementCard: some View {
+        DisclosureGroup(isExpanded: Binding(get: { model.movementExpanded }, set: {
+            model.movementExpanded = $0
+            model.movementToggled($0)
+        })) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 6) {
+                    Text(L("Idle delay")).font(.subheadline).frame(width: 108, alignment: .leading)
+                    secondsField($model.idleThreshold)
+                    Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
+                    Spacer(minLength: 0)
+                }
+                HStack(spacing: 6) {
+                    Text(L("Move every")).font(.subheadline).frame(width: 108, alignment: .leading)
+                    secondsField($model.intervalLow)
+                    Text("–").foregroundStyle(.secondary)
+                    secondsField($model.intervalHigh)
+                    Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
+                    Spacer(minLength: 0)
+                }
+                HStack {
+                    Button(L("Apply movement"), action: model.movementChanged)
+                        .controlSize(.small)
+                    Spacer(minLength: 8)
+                }
+            }
+            .padding(.top, 10)
+            .onSubmit { model.movementChanged() }
+        } label: {
+            cardTitle(L("Movement"), systemImage: "speedometer")
+        }
+        .cardStyle()
+    }
+
+    private func secondsField(_ value: Binding<Double>) -> some View {
+        TextField("", value: value, format: .number.precision(.fractionLength(0)))
+            .textFieldStyle(.roundedBorder)
+            .multilineTextAlignment(.trailing)
+            .frame(width: 52)
     }
 
     private var displayCard: some View {

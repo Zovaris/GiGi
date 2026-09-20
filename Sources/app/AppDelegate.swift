@@ -212,6 +212,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func reloadConfig() {
         engine.apply(config: loadConfig(path: AppDelegate.configPathFromArguments()))
+        syncPanelFromConfig()
         refresh()
     }
 
@@ -478,6 +479,11 @@ private extension AppDelegate {
             self.defaults.set(self.panel.until, forKey: "timerUntil")
             if self.engine.running { self.applyPanelTimer() }
         }
+        panel.movementExpanded = defaults.object(forKey: "movementExpanded") as? Bool ?? true
+        panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
+        panel.movementToggled = { [weak self] expanded in
+            self?.defaults.set(expanded, forKey: "movementExpanded")
+        }
         panel.accessibility = { [weak self] in self?.openAccessibilityPane() }
         panel.move = { [weak self] in self?.moveNow() }
         panel.reload = { [weak self] in self?.reloadConfig() }
@@ -490,6 +496,30 @@ private extension AppDelegate {
         controller.sizingOptions = []
         popover.contentViewController = controller
         popover.contentSize = NSSize(width: 360, height: panel.panelHeight)
+    }
+
+    private func syncPanelFromConfig() {
+        panel.idleThreshold = engine.config.idleThresholdSeconds
+        panel.intervalLow = engine.config.intervalSeconds[0]
+        panel.intervalHigh = engine.config.intervalSeconds[1]
+    }
+
+    private func applyPanelMovement() {
+        var config = engine.config
+        config.idleThresholdSeconds = clampSeconds(panel.idleThreshold, fallback: config.idleThresholdSeconds)
+        let low = clampSeconds(panel.intervalLow, fallback: config.intervalSeconds[0])
+        let high = clampSeconds(panel.intervalHigh, fallback: config.intervalSeconds[1])
+        config.intervalSeconds = [min(low, high), max(low, high)]
+        engine.apply(config: config)
+        panel.error = saveConfig(config, path: AppDelegate.configPathFromArguments())
+            ? nil : L("Could not write the configuration file")
+        syncPanelFromConfig()
+        refresh()
+    }
+
+    private func clampSeconds(_ value: Double, fallback: Double) -> Double {
+        guard value.isFinite else { return fallback }
+        return min(3600, max(1, value.rounded()))
     }
 
     private func applyPanelTimer() {

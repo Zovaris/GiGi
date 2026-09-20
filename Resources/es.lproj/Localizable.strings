@@ -60,3 +60,9 @@
 "Idle %.0fs" = "Inactivo %.0fs";
 "Screen awake · permission pending" = "Pantalla activa · permiso pendiente";
 "Apply timer" = "Aplicar temporizador";
+"Movement" = "Movimiento";
+"Idle delay" = "Tras inactividad";
+"Move every" = "Mover cada";
+"seconds" = "segundos";
+"Apply movement" = "Aplicar movimiento";
+"Could not write the configuration file" = "No se pudo escribir el archivo de configuración";

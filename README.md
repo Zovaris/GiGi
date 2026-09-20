@@ -49,8 +49,10 @@ Changing the timer during a session updates its deadline. When the timer expires
 
 The panel also includes display, schedule mode, Accessibility, and login controls.
 Expand **Settings** to reload or open configuration and logs. Right-click the menu bar
-icon for the original command menu and recent activity. Movement intervals, idle delay,
-and schedule windows remain configurable in the JSON file below.
+icon for the original command menu and recent activity. Expand **Movement** to set how long
+GiGi waits for you to go idle and how often it moves; **Apply movement** writes both back
+to the JSON configuration and applies them immediately. Schedule windows remain
+configurable in that file.
 
 
 ```bash

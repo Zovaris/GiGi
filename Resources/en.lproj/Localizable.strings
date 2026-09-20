@@ -60,3 +60,9 @@
 "Idle %.0fs" = "Idle %.0fs";
 "Screen awake · permission pending" = "Screen awake · permission pending";
 "Apply timer" = "Apply timer";
+"Movement" = "Movement";
+"Idle delay" = "Idle delay";
+"Move every" = "Move every";
+"seconds" = "seconds";
+"Apply movement" = "Apply movement";
+"Could not write the configuration file" = "Could not write the configuration file";
