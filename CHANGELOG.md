@@ -3,6 +3,20 @@
 Newest first. Versions match the `vX.Y.Z` tags and the app's `Info.plist`; dates are ISO 8601.
 Cut a release with `make version`, which writes the section for you.
 
+## 0.4.0 - 2026-09-20
+
+**Added**
+
+- Let the dim level go down to 0 instead of stopping at 5%
+- Add gigi version and gigi update
+- Check for a newer release and show it in the settings drawer
+
+**Fixed**
+
+- Measure the changelog from the last release commit when its tag is gone
+- Clear any other GiGi agent before installing or removing one
+- Adopt the com.justcallmebryan.gigi bundle identifier (grant Accessibility once more)
+
 ## 0.3.0 - 2026-09-20
 
 **Added**
