@@ -47,7 +47,11 @@ cursor movement and display wakefulness. Choose **No limit**, a duration, or an 
 the selection is remembered for the next session. Confirm edited minutes or an end time with **Apply timer**; presets apply immediately.
 Changing the timer during a session updates its deadline. When the timer expires, GiGi stays off, including after relaunch.
 
-The panel also includes display, schedule mode, Accessibility, and login controls.
+The panel also includes display, schedule mode, Accessibility, and login controls. The **Schedule**
+card turns schedule windows on with its own switch and sets the window with **From** and **To**
+hour and minute pickers plus a **Repeat** row of day chips, so the days and the hours no longer
+need the JSON file. Adjusting any of them applies immediately and rewrites the configuration,
+and with **Mode** set to **Always** the whole card is disabled because windows are ignored then.
 **Movement** and **Settings** open as drawers that slide over the panel, so the list keeps a
 fixed size instead of growing and pushing the footer around. The drawer header repeats the
 section name and closes with the ✕, the Escape key, or the *Movement*/*Settings* row closing
@@ -57,7 +61,7 @@ The **Movement** drawer sets how long GiGi waits for you to go idle and how ofte
 **Apply movement** writes both back to the JSON configuration and applies them immediately.
 The **Settings** drawer holds Start at login, display wakefulness and dimming, the global
 **Shortcut**, Language, Appearance, Open log and, under **Advanced**, reload and open the
-configuration folder. Schedule windows remain configurable in the JSON file. The **Shortcut** row in there
+configuration folder. The **Shortcut** row in there
 records a global key combination that turns GiGi on and off from any app; press Delete while
 recording to disable it, or Escape to keep the current one.
 
@@ -147,8 +151,9 @@ such as `ctrl+cmd+j`, `opt+shift+f9`, or `none`. Keys
 can be letters, digits, `space`, `tab`, `return`, `delete`, the four arrows, and `f1`–`f12`.
 Missing keys fall back to their defaults, so an older config file keeps working.
 
-Windows can cross midnight, for example `{ "start": "22:00", "end": "06:00" }`. Reload the
-app with `./bin/gigi reload`; restart the LaunchAgent after editing its config.
+Windows can cross midnight, for example `{ "start": "22:00", "end": "06:00" }`. The panel edits
+the first window and keeps any others, showing a note when the file holds more than one. Reload
+the app with `./bin/gigi reload`; restart the LaunchAgent after editing its config.
 
 ## Architecture
 
