@@ -1,0 +1,14 @@
+{
+  "intervalSeconds": [45, 90],
+  "idleThresholdSeconds": 40,
+  "jiggleDistancePixels": 2,
+  "preventDisplaySleep": true,
+  "wakeDisplayOnWindowStart": true,
+  "schedule": {
+    "enabled": true,
+    "days": ["mon", "tue", "wed", "thu", "fri"],
+    "windows": [
+      { "start": "09:00", "end": "18:00" }
+    ]
+  }
+}
