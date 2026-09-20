@@ -4,6 +4,9 @@
   "jiggleDistancePixels": 2,
   "preventDisplaySleep": true,
   "wakeDisplayOnWindowStart": true,
+  "clickMode": "none",
+  "scrollMode": "none",
+  "hotkey": "ctrl+cmd+j",
   "schedule": {
     "enabled": true,
     "days": ["mon", "tue", "wed", "thu", "fri"],

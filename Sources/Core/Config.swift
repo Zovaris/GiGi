@@ -17,7 +17,13 @@ struct Config: Codable {
     var jiggleDistancePixels: Double
     var preventDisplaySleep: Bool
     var wakeDisplayOnWindowStart: Bool
+    var clickMode: String
+    var scrollMode: String
+    var hotkey: String
     var schedule: Schedule
+
+    static let clickModes = ["none", "single", "double", "right"]
+    static let scrollModes = ["none", "ping", "down", "up"]
 
     static let `default` = Config(
         intervalSeconds: [45, 90],
@@ -25,6 +31,9 @@ struct Config: Codable {
         jiggleDistancePixels: 2,
         preventDisplaySleep: true,
         wakeDisplayOnWindowStart: true,
+        clickMode: "none",
+        scrollMode: "none",
+        hotkey: Hotkey.default.config,
         schedule: Schedule(
             enabled: false,
             days: ["mon", "tue", "wed", "thu", "fri"],
@@ -41,7 +50,28 @@ struct Config: Codable {
         }
         config.jiggleDistancePixels = max(0, config.jiggleDistancePixels)
         config.idleThresholdSeconds = max(0, config.idleThresholdSeconds)
+        if !Config.clickModes.contains(config.clickMode) { config.clickMode = "none" }
+        if !Config.scrollModes.contains(config.scrollMode) { config.scrollMode = "none" }
+        if config.hotkey != Hotkey.disabledName && Hotkey.parse(config.hotkey) == nil {
+            config.hotkey = Config.default.hotkey
+        }
         return config
+    }
+}
+
+extension Config {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let fallback = Config.default
+        intervalSeconds = try container.decodeIfPresent([Double].self, forKey: .intervalSeconds) ?? fallback.intervalSeconds
+        idleThresholdSeconds = try container.decodeIfPresent(Double.self, forKey: .idleThresholdSeconds) ?? fallback.idleThresholdSeconds
+        jiggleDistancePixels = try container.decodeIfPresent(Double.self, forKey: .jiggleDistancePixels) ?? fallback.jiggleDistancePixels
+        preventDisplaySleep = try container.decodeIfPresent(Bool.self, forKey: .preventDisplaySleep) ?? fallback.preventDisplaySleep
+        wakeDisplayOnWindowStart = try container.decodeIfPresent(Bool.self, forKey: .wakeDisplayOnWindowStart) ?? fallback.wakeDisplayOnWindowStart
+        clickMode = try container.decodeIfPresent(String.self, forKey: .clickMode) ?? fallback.clickMode
+        scrollMode = try container.decodeIfPresent(String.self, forKey: .scrollMode) ?? fallback.scrollMode
+        hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? fallback.hotkey
+        schedule = try container.decodeIfPresent(Schedule.self, forKey: .schedule) ?? fallback.schedule
     }
 }
 
