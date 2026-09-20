@@ -119,6 +119,7 @@ struct PanelView: View {
         }
         .frame(width: 360, height: model.panelHeight)
         .background(.regularMaterial)
+        .preferredColorScheme(model.theme == "dark" ? .dark : model.theme == "light" ? .light : nil)
         .environment(\.locale, model.language == "system" ? .autoupdatingCurrent : Locale(identifier: model.language))
         .onPreferenceChange(HeaderHeightKey.self) { height in
             DispatchQueue.main.async { model.setMetrics(header: height) }
@@ -528,39 +529,39 @@ struct PanelView: View {
                 .accessibilityLabel(L("Schedule"))
                 .pointerCursor()
             }
-            if model.mode == "always" {
-                Text(L("Ignored while Mode is Always"))
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 4) {
-                        Text(L("From")).font(.subheadline).fixedSize()
-                        timePickers($model.scheduleStart, label: L("From"), onChange: model.scheduleChanged)
-                        Text(L("To")).font(.subheadline).padding(.leading, 4).fixedSize()
-                        timePickers($model.scheduleEnd, label: L("To"), onChange: model.scheduleChanged)
-                        Spacer(minLength: 0)
-                    }
-                    HStack(spacing: 5) {
-                        Text(L("Repeat")).font(.subheadline)
-                        Spacer(minLength: 4)
-                        ForEach(weekdayNames, id: \.self) { day in
-                            dayChip(day)
-                        }
-                    }
-                    if model.scheduleDays.isEmpty {
-                        Text(L("Select at least one day"))
-                            .font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 4) {
+                    Text(L("From")).font(.subheadline).fixedSize()
+                    timePickers($model.scheduleStart, label: L("From"), onChange: model.scheduleChanged)
+                    Text(L("To")).font(.subheadline).padding(.leading, 4).fixedSize()
+                    timePickers($model.scheduleEnd, label: L("To"), onChange: model.scheduleChanged)
+                    Spacer(minLength: 0)
+                }
+                HStack(spacing: 5) {
+                    Text(L("Repeat")).font(.subheadline)
+                    Spacer(minLength: 4)
+                    ForEach(weekdayNames, id: \.self) { day in
+                        dayChip(day)
                     }
                 }
-                .disabled(!model.scheduleEnabled)
-                .opacity(model.scheduleEnabled ? 1 : 0.5)
-                if model.scheduleWindows > 1 {
-                    Text(String(format: L("+%d more windows in the configuration file"), model.scheduleWindows - 1))
-                        .font(.caption2).foregroundStyle(.secondary)
+                if model.scheduleDays.isEmpty {
+                    Text(L("Select at least one day"))
+                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
+            .disabled(!model.scheduleEnabled)
+            .opacity(model.scheduleEnabled ? 1 : 0.5)
+            if model.scheduleEnabled && model.mode == "always" {
+                Label(L("Mode Always is ignoring this window"), systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(L("Mode Always is ignoring this window"))
+            }
+            if model.scheduleWindows > 1 {
+                Text(String(format: L("+%d more windows in the configuration file"), model.scheduleWindows - 1))
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
         }
-        .disabled(model.mode == "always")
     }
 
     private func timePickers(_ date: Binding<Date>, label: String, minuteStep: Int = 5, onChange: @escaping () -> Void) -> some View {

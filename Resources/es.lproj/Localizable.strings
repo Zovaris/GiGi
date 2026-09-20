@@ -106,7 +106,7 @@
 
 "Repeat" = "Repetir";
 
-"Ignored while Mode is Always" = "Se ignora mientras el modo sea Siempre";
+"Mode Always is ignoring this window" = "El modo Siempre está ignorando esta ventana";
 
 "Select at least one day" = "Seleccioná al menos un día";
 
