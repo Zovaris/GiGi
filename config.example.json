@@ -8,6 +8,8 @@
   "scrollMode": "none",
   "dimWhileActive": false,
   "dimBrightness": 0.35,
+  "batteryLimitEnabled": false,
+  "batteryLimitPercent": 20,
   "hotkey": "ctrl+cmd+j",
   "schedule": {
     "enabled": true,

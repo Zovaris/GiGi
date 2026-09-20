@@ -58,6 +58,12 @@ Schedule off; its hours and weekdays are preserved. **Mode** set to **Always** o
 window at runtime: the hours stay editable and the card says the window is being ignored, so the
 schedule takes effect again as soon as Mode returns to **Schedule**. The choice lives in the app,
 not in the configuration file, and `--ignore-schedule` does the same for `gigi run`.
+**Battery limit** stops GiGi when the internal battery reaches the selected percentage (or lower),
+only while running on battery power. It defaults to off with a 20% threshold and works with
+Timer, Schedule, and Always mode. It clears the session deadline and stays stopped until
+you start GiGi again; it never shuts down the Mac. Missing battery readings and AC power do
+not stop the session.
+
 **Movement** and **Settings** open as drawers that slide over the panel, so the list keeps a
 fixed size instead of growing and pushing the footer around. The drawer header repeats the
 section name and closes with the ✕, the Escape key, or the *Movement*/*Settings* row closing
