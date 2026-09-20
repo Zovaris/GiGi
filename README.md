@@ -55,16 +55,17 @@ behind it. Right-click the menu bar icon for the original command menu and recen
 
 The **Movement** drawer sets how long GiGi waits for you to go idle and how often it moves;
 **Apply movement** writes both back to the JSON configuration and applies them immediately.
-The **Settings** drawer holds Start at login, display wakefulness, Language, Appearance,
-Open log and, under **Advanced**, reload and open the configuration folder. Schedule windows
-remain configurable in the JSON file.
+The **Settings** drawer holds Start at login, display wakefulness, the global **Shortcut**,
+Language, Appearance, Open log and, under **Advanced**, reload and open the configuration
+folder. Schedule windows remain configurable in the JSON file. The **Shortcut** row in there
+records a global key combination that turns GiGi on and off from any app; press Delete while
+recording to disable it, or Escape to keep the current one.
 
 **Clicks** and **Scroll** add a synthetic click or scroll to every move, which keeps presence
 services happy when a 2px cursor nudge is not enough. Both are off by default, and both land
 wherever the pointer happens to be: a click really does click, and a scroll really does scroll.
 The `ping` scroll mode moves one line down and one line up, so the content ends up where it
-started. The **Shortcut** card records a global key combination that turns GiGi on and off from
-any app; press Delete while recording to disable it.
+started.
 
 
 ```bash

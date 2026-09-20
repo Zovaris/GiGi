@@ -157,7 +157,6 @@ struct PanelView: View {
                     timerCard
                     drawerCard
                     modeCard
-                    shortcutCard
                     if let error = model.error {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
                             .font(.footnote)
@@ -359,9 +358,9 @@ struct PanelView: View {
         .onSubmit { model.movementChanged() }
     }
 
-    private var shortcutCard: some View {
+    private var shortcutRow: some View {
         HStack(spacing: 8) {
-            cardTitle(L("Shortcut"), systemImage: "keyboard")
+            Label(L("Shortcut"), systemImage: "keyboard")
             Spacer(minLength: 8)
             if model.recordingHotkey {
                 Text(L("Press a key combination")).font(.caption).foregroundStyle(.secondary)
@@ -375,7 +374,6 @@ struct PanelView: View {
                 Button(L("Record"), action: model.recordHotkey).controlSize(.small)
             }
         }
-        .cardStyle()
     }
 
     private func secondsField(_ value: Binding<Double>) -> some View {
@@ -449,6 +447,8 @@ struct PanelView: View {
                 .controlSize(.small)
             }
             displaySetting
+            Divider()
+            shortcutRow
             Divider()
             HStack {
                 Label(L("Language"), systemImage: "globe")
