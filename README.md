@@ -54,6 +54,13 @@ GiGi waits for you to go idle and how often it moves; **Apply movement** writes 
 to the JSON configuration and applies them immediately. Schedule windows remain
 configurable in that file.
 
+**Clicks** and **Scroll** add a synthetic click or scroll to every move, which keeps presence
+services happy when a 2px cursor nudge is not enough. Both are off by default, and both land
+wherever the pointer happens to be: a click really does click, and a scroll really does scroll.
+The `ping` scroll mode moves one line down and one line up, so the content ends up where it
+started. The **Shortcut** card records a global key combination that turns GiGi on and off from
+any app; press Delete while recording to disable it.
+
 
 ```bash
 ./bin/gigi help
@@ -85,6 +92,8 @@ Useful options for `run`, `once`, and `probe`:
 --idle-threshold SECONDS  minimum idle time before moving
 --until HH:MM             stop at a time
 --duration MINUTES        stop after a duration
+--click MODE              extra click per move: none|single|double|right
+--scroll MODE             extra scroll per move: none|ping|down|up
 --no-assert               do not keep the display awake
 --ignore-schedule         ignore schedule windows
 --force                   run while the app is open
@@ -102,6 +111,9 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
   "jiggleDistancePixels": 2,
   "preventDisplaySleep": true,
   "wakeDisplayOnWindowStart": true,
+  "clickMode": "none",
+  "scrollMode": "none",
+  "hotkey": "ctrl+cmd+j",
   "schedule": {
     "enabled": true,
     "days": ["mon", "tue", "wed", "thu", "fri"],
@@ -109,6 +121,11 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
   }
 }
 ```
+
+`clickMode` accepts `none`, `single`, `double`, and `right`; `scrollMode` accepts `none`, `ping`,
+`down`, and `up`; `hotkey` is a combination such as `ctrl+cmd+j`, `opt+shift+f9`, or `none`. Keys
+can be letters, digits, `space`, `tab`, `return`, `delete`, the four arrows, and `f1`–`f12`.
+Missing keys fall back to their defaults, so an older config file keeps working.
 
 Windows can cross midnight, for example `{ "start": "22:00", "end": "06:00" }`. Reload the
 app with `./bin/gigi reload`; restart the LaunchAgent after editing its config.
@@ -126,7 +143,8 @@ The menu bar app exposes `CFMessagePort` as `com.codebuff.gigi.control` for CLI 
 
 Accessibility may be blocked by macOS or MDM. A locked Mac can prevent synthetic cursor events,
 and presence services may use signals beyond the local idle timer. Keeping the display awake also
-uses battery.
+uses battery. Click and scroll modes fire wherever the pointer is, so leave them off unless you
+need them, and prefer `ping` over `down` or `up`.
 
 ```bash
 ./uninstall.sh            # removes the LaunchAgent; keeps app, config, and logs
