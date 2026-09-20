@@ -1,6 +1,6 @@
-bin/
-app/
-.build/
-.freebuff/
+/bin/
+/app/
+/.build/
+/.freebuff/
 *.log
 .DS_Store
