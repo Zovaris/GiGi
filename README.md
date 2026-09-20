@@ -71,6 +71,7 @@ When the menu bar app is running, the CLI can control it:
 ./bin/gigi duration 240
 ./bin/gigi until 18:00
 ./bin/gigi reload
+./bin/gigi panel               # open the control panel
 ./bin/gigi quit-app
 ```
 

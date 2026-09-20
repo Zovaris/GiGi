@@ -143,6 +143,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "reload":
             reloadConfig()
             return "ok: config reloaded (schedule \(engine.config.schedule.enabled ? "ON" : "OFF"))"
+        case "panel":
+            guard !popover.isShown else { return "ok: panel already open" }
+            showPanel()
+            return "ok: panel open"
         case "menu":
             let lines: [String] = (legacyMenu?.items ?? []).map { item in
                 let mark = item.state == .on ? "[x] " : (item.action != nil ? "[ ] " : "    ")
