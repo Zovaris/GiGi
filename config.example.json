@@ -10,6 +10,7 @@
   "dimBrightness": 0.35,
   "batteryLimitEnabled": false,
   "batteryLimitPercent": 20,
+  "notificationsEnabled": true,
   "hotkey": "ctrl+cmd+j",
   "schedule": {
     "enabled": true,

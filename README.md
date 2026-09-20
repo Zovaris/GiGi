@@ -88,6 +88,13 @@ switch goes off, and a brightness you change by hand during a run is left alone.
 **Keep display awake**, since a display macOS is allowed to sleep is already dark, so the switch
 stays disabled until that row is on.
 
+**Notifications** tells you when GiGi stops on its own: the timer running out, the battery limit,
+or the missing Accessibility permission that keeps the cursor still while the display stays awake.
+The row in the **Settings** drawer has its own switch, and macOS asks for permission the first time
+it is on. If you deny it, the row says **Blocked in System Settings** instead of promising a banner
+it cannot show. Turning GiGi off yourself posts nothing, and a notice is raised once per session,
+so a missing permission does not nag on every move.
+
 **Clicks** and **Scroll** add a synthetic click or scroll to every move, which keeps presence
 services happy when a 2px cursor nudge is not enough. Both are off by default, and both land
 wherever the pointer happens to be: a click really does click, and a scroll really does scroll.
@@ -151,6 +158,7 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
   "scrollMode": "none",
   "dimWhileActive": false,
   "dimBrightness": 0.35,
+  "notificationsEnabled": true,
   "hotkey": "ctrl+cmd+j",
   "schedule": {
     "enabled": true,
@@ -161,7 +169,8 @@ The default file is `~/.config/gigi/config.json`. `./install.sh` creates it from
 ```
 
 `clickMode` accepts `none`, `single`, `double`, and `right`; `scrollMode` accepts `none`, `ping`,
-`down`, and `up`; `dimBrightness` is a level between `0.05` and `1`; `hotkey` is a combination
+`down`, and `up`; `dimBrightness` is a level between `0.05` and `1`; `notificationsEnabled`
+turns the system notifications off without touching the rest; `hotkey` is a combination
 such as `ctrl+cmd+j`, `opt+shift+f9`, or `none`. Keys
 can be letters, digits, `space`, `tab`, `return`, `delete`, the four arrows, and `f1`–`f12`.
 Missing keys fall back to their defaults, so an older config file keeps working.
@@ -172,7 +181,7 @@ the app with `./bin/gigi reload`; restart the LaunchAgent after editing its conf
 
 ## Architecture
 
-- `Sources/Core`: engine, schedule, power assertion, cursor events, brightness, IPC, and logging.
+- `Sources/Core`: engine, schedule, power assertion, cursor events, brightness, notices, IPC, and logging.
 - `Sources/app`: AppKit menu bar and SwiftUI control panel.
 - `Sources/cli`: CLI and LaunchAgent frontend.
 - `Resources`: bundle metadata, icon, and localizations.
@@ -186,7 +195,9 @@ and presence services may use signals beyond the local idle timer. Keeping the d
 uses battery. Click and scroll modes fire wherever the pointer is, so leave them off unless you
 need them, and prefer `ping` over `down` or `up`. Dimming drives the real backlight through a
 private framework, so it can stop working after a macOS update; `./bin/gigi probe` reports whether
-the display allows brightness control. External displays often do not.
+the display allows brightness control. External displays often do not. Notifications are delivered
+by the system, so a Focus mode or a notification style set to *None* can hide a banner that GiGi
+did post; `~/Library/Logs/GiGi/app.log` records every one it hands over.
 
 ```bash
 ./uninstall.sh            # removes the LaunchAgent; keeps app, config, and logs
