@@ -19,6 +19,16 @@ if [ ! -f "$CONFIG" ]; then
   echo "created $CONFIG (edit it, then use 'Reload config' or 'gigi reload')"
 fi
 
+# Any other GiGi agent left behind by an earlier install would keep running its own engine,
+# so clear them out before this one goes in.
+for stale in "$HOME/Library/LaunchAgents"/*.gigi.plist; do
+  [ -e "$stale" ] || continue
+  [ "$(basename "$stale")" = "$LABEL.plist" ] && continue
+  launchctl bootout "gui/$(id -u)/$(basename "$stale" .plist)" 2>/dev/null || true
+  rm -f "$stale"
+  echo "removed the stale agent $(basename "$stale")"
+done
+
 if [ "${1:-}" = "--app" ]; then
   echo "==> installing the menu bar app to $APP_DST"
   launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true

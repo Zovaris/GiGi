@@ -13,6 +13,13 @@ else
   echo "no LaunchAgent was installed"
 fi
 
+for stale in "$HOME/Library/LaunchAgents"/*.gigi.plist; do
+  [ -e "$stale" ] || continue
+  launchctl bootout "gui/$(id -u)/$(basename "$stale" .plist)" 2>/dev/null || true
+  rm -f "$stale"
+  echo "removed the stale agent $(basename "$stale")"
+done
+
 if [ -d "$APP_DST" ]; then
   echo "app bundle left in place: $APP_DST (delete it manually if you want)"
 fi
