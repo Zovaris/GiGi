@@ -483,7 +483,6 @@ private extension AppDelegate {
     private func configurePanel() {
         panel.language = defaults.string(forKey: "appLanguage") ?? "system"
         panel.theme = defaults.string(forKey: "appTheme") ?? "system"
-        applyAppearance()
         panel.preferencesChanged = { [weak self] in
             guard let self else { return }
             self.defaults.set(self.panel.language, forKey: "appLanguage")
@@ -537,6 +536,7 @@ private extension AppDelegate {
         let controller = NSHostingController(rootView: PanelView(model: panel))
         controller.sizingOptions = []
         popover.contentViewController = controller
+        applyAppearance()
         popover.contentSize = NSSize(width: 360, height: panel.panelHeight)
     }
 
@@ -645,11 +645,15 @@ private extension AppDelegate {
     }
 
     private func applyAppearance() {
+        let appearance: NSAppearance?
         switch panel.theme {
-        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
-        case "light": NSApp.appearance = NSAppearance(named: .aqua)
-        default: NSApp.appearance = nil
+        case "dark": appearance = NSAppearance(named: .darkAqua)
+        case "light": appearance = NSAppearance(named: .aqua)
+        default: appearance = nil
         }
+        NSApp.appearance = nil
+        popover.appearance = appearance
+        popover.contentViewController?.view.appearance = appearance
     }
 
     private func applyPanelMovement() {
