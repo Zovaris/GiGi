@@ -1,5 +1,6 @@
 import AppKit
 import ServiceManagement
+import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusItem: NSStatusItem
@@ -7,6 +8,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let server = ControlServer()
     private let defaults = UserDefaults.standard
     private var timer: Timer?
+    private let panel = PanelModel()
+    private let popover = NSPopover()
+    private var legacyMenu: NSMenu?
 
     private var statusTitleItem: NSMenuItem!
     private var statusDetailItem: NSMenuItem!
@@ -46,7 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         buildMenu(menu)
         menu.delegate = self
-        statusItem.menu = menu
+        legacyMenu = menu
+        configurePanel()
+        statusItem.button?.target = self
+        statusItem.button?.action = #selector(showPanel)
+        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
         if !accessibilityTrusted() && !defaults.bool(forKey: "askedAccessibility") {
             defaults.set(true, forKey: "askedAccessibility")
@@ -54,11 +62,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             requestAccessibility(prompt: true)
         }
 
+        let savedDeadline = defaults.object(forKey: "deadline") as? Date
+        if let savedDeadline, savedDeadline <= Date() {
+            defaults.set(false, forKey: "running")
+            defaults.removeObject(forKey: "deadline")
+        }
         if defaults.object(forKey: "running") == nil || defaults.bool(forKey: "running") {
             engine.start(reason: "app launch")
-        }
-        if let deadline = defaults.object(forKey: "deadline") as? Date, deadline > Date() {
-            engine.setDeadline(deadline)
+            if let savedDeadline, savedDeadline > Date() { engine.setDeadline(savedDeadline) }
         }
 
         if server.start() {
@@ -71,7 +82,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self else { return }
             if !self.engine.tick() {
                 self.defaults.removeObject(forKey: "deadline")
+                self.defaults.set(false, forKey: "running")
             }
+            if self.popover.isShown { self.refresh() }
         }
         if let timer { RunLoop.main.add(timer, forMode: .common) }
 
@@ -93,16 +106,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case "status":
             return engine.statusLine()
         case "start":
-            engine.start(reason: "IPC")
+            startFromPanel()
             defaults.set(true, forKey: "running")
             return "ok: on"
         case "stop":
             engine.stop(reason: "IPC")
+            engine.setDeadline(nil)
+            defaults.removeObject(forKey: "deadline")
             defaults.set(false, forKey: "running")
             return "ok: off"
         case "toggle":
-            engine.toggle()
-            defaults.set(engine.running, forKey: "running")
+            toggleEngine()
             return "ok: \(engine.running ? "on" : "off")"
         case "jiggle":
             return engine.jiggleNow() ? "ok: move sent" : "error: missing Accessibility permission"
@@ -110,12 +124,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard parts.count > 1, let when = nextOccurrence(ofHM: parts[1], after: Date()) else {
                 return "error: invalid time (HH:MM)"
             }
+            panel.timerKind = "until"
+            panel.until = when
+            panel.timerChanged()
             engine.setDeadline(when)
             defaults.set(when, forKey: "deadline")
             return "ok: until \(logTimestampFormatter.string(from: when))"
         case "duration":
-            guard parts.count > 1, let minutes = Double(parts[1]) else { return "error: invalid minutes" }
+            guard parts.count > 1, let minutes = Double(parts[1]), minutes.isFinite,
+                  minutes >= 1, minutes <= 10080 else { return "error: invalid minutes (1–10080)" }
             let when = Date().addingTimeInterval(minutes * 60)
+            panel.timerKind = "duration"
+            panel.minutes = minutes
+            panel.timerChanged()
             engine.setDeadline(when)
             defaults.set(when, forKey: "deadline")
             return "ok: until \(logTimestampFormatter.string(from: when))"
@@ -123,7 +144,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             reloadConfig()
             return "ok: config reloaded (schedule \(engine.config.schedule.enabled ? "ON" : "OFF"))"
         case "menu":
-            let lines: [String] = (statusItem.menu?.items ?? []).map { item in
+            let lines: [String] = (legacyMenu?.items ?? []).map { item in
                 let mark = item.state == .on ? "[x] " : (item.action != nil ? "[ ] " : "    ")
                 guard let submenu = item.submenu else { return mark + item.title }
                 let sub = submenu.items
@@ -140,8 +161,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    private func startFromPanel() {
+        guard !engine.running else { return }
+        applyPanelTimer()
+        engine.start(reason: "panel or IPC")
+    }
+
     @objc private func toggleEngine() {
-        engine.toggle()
+        if engine.running {
+            engine.stop(reason: "panel")
+            engine.setDeadline(nil)
+            defaults.removeObject(forKey: "deadline")
+        } else {
+            startFromPanel()
+        }
         defaults.set(engine.running, forKey: "running")
     }
 
@@ -150,23 +183,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func setTimerPreset(_ sender: NSMenuItem) {
-        let minutes = sender.tag
-        if minutes <= 0 {
-            engine.setDeadline(nil)
-            defaults.removeObject(forKey: "deadline")
-        } else {
-            let when = Date().addingTimeInterval(Double(minutes) * 60)
-            engine.setDeadline(when)
-            defaults.set(when, forKey: "deadline")
-        }
+        panel.timerKind = sender.tag <= 0 ? "none" : "duration"
+        if sender.tag > 0 { panel.minutes = Double(sender.tag) }
+        panel.timerChanged()
         refresh()
     }
 
     @objc private func setUntilTime(_ sender: NSMenuItem) {
         guard let hm = sender.representedObject as? String,
               let when = nextOccurrence(ofHM: hm, after: Date()) else { return }
-        engine.setDeadline(when)
-        defaults.set(when, forKey: "deadline")
+        panel.timerKind = "until"
+        panel.until = when
+        panel.timerChanged()
         refresh()
     }
 
@@ -205,6 +233,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleLaunchAtLogin() {
         let service = SMAppService.mainApp
+        panel.error = nil
         do {
             if service.status == .enabled {
                 try service.unregister()
@@ -214,6 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 Log.info("login item: registered")
             }
         } catch {
+            panel.error = error.localizedDescription
             Log.error("login item: \(error.localizedDescription) (is the app in /Applications?)")
         }
         refresh()
@@ -330,14 +360,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func refresh() {
         let status = engine.status
+        panel.status = status
+        panel.preventDisplaySleep = engine.preventDisplaySleep
+        panel.mode = engine.mode.rawValue
+        panel.login = SMAppService.mainApp.status == .enabled
+        panel.intervalSummary = String(format: L("After %.0fs idle · every %.0f–%.0fs"),
+                                       engine.config.idleThresholdSeconds,
+                                       engine.config.intervalSeconds[0], engine.config.intervalSeconds[1])
 
         let symbol: String
         if !status.running {
-            symbol = "cursorarrow"
+            symbol = "computermouse"
         } else if status.outOfSchedule {
             symbol = "moon.zzz"
         } else {
-            symbol = "cursorarrow.motionlines"
+            symbol = "computermouse.fill"
         }
         if let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "GiGi") {
             image.isTemplate = true
@@ -345,6 +382,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusItem.button?.toolTip = "GiGi: \(engine.shortStatus) · \(status.jiggles)"
         }
 
+        refreshMenu(status)
+    }
+
+    private func refreshMenu(_ status: Engine.Status) {
         guard statusTitleItem != nil else { return }
 
         if !status.running {
@@ -414,4 +455,85 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         recentMenuItem.submenu = submenu
     }
+}
+
+private extension AppDelegate {
+    private func configurePanel() {
+        panel.timerKind = defaults.string(forKey: "timerKind") ?? "none"
+        panel.minutes = defaults.object(forKey: "timerMinutes") as? Double ?? 60
+        panel.until = defaults.object(forKey: "timerUntil") as? Date ?? Date()
+        panel.toggle = { [weak self] in self?.toggleEngine() }
+        panel.screen = { [weak self] in self?.toggleScreenAssertion() }
+        panel.modeChanged = { [weak self] value in
+            guard let self else { return }
+            self.engine.mode = Engine.Mode(rawValue: value) ?? .schedule
+            self.defaults.set(value, forKey: "mode")
+            self.refresh()
+        }
+        panel.timerChanged = { [weak self] in
+            guard let self else { return }
+            self.panel.minutes = self.panel.minutes.isFinite ? max(1, min(10080, self.panel.minutes)) : 60
+            self.defaults.set(self.panel.timerKind, forKey: "timerKind")
+            self.defaults.set(self.panel.minutes, forKey: "timerMinutes")
+            self.defaults.set(self.panel.until, forKey: "timerUntil")
+            if self.engine.running { self.applyPanelTimer() }
+        }
+        panel.accessibility = { [weak self] in self?.openAccessibilityPane() }
+        panel.move = { [weak self] in self?.moveNow() }
+        panel.reload = { [weak self] in self?.reloadConfig() }
+        panel.configFolder = { [weak self] in self?.openConfigFolder() }
+        panel.log = { [weak self] in self?.openLog() }
+        panel.loginChanged = { [weak self] in self?.toggleLaunchAtLogin() }
+        panel.quit = { NSApp.terminate(nil) }
+        popover.behavior = .transient
+        let controller = NSHostingController(rootView: PanelView(model: panel))
+        controller.sizingOptions = []
+        popover.contentViewController = controller
+        popover.contentSize = NSSize(width: 360, height: panel.panelHeight)
+    }
+
+    private func applyPanelTimer() {
+        let deadline: Date?
+        switch panel.timerKind {
+        case "duration": deadline = Date().addingTimeInterval(max(1, min(10080, panel.minutes)) * 60)
+        case "until":
+            let components = Calendar.current.dateComponents([.hour, .minute], from: panel.until)
+            deadline = Calendar.current.nextDate(after: Date(), matching: components, matchingPolicy: .nextTime)
+        default: deadline = nil
+        }
+        engine.setDeadline(deadline)
+        if let deadline { defaults.set(deadline, forKey: "deadline") }
+        else { defaults.removeObject(forKey: "deadline") }
+    }
+
+    private func sizePanel(for button: NSStatusBarButton) {
+        guard let window = button.window, let screen = window.screen else { return }
+        let anchor = window.convertToScreen(button.convert(button.bounds, to: nil))
+        let availableHeight = min(anchor.minY, screen.visibleFrame.maxY) - screen.visibleFrame.minY - 32
+        panel.panelHeight = min(560, max(1, availableHeight))
+        let size = NSSize(width: 360, height: panel.panelHeight)
+        popover.contentViewController?.preferredContentSize = size
+        popover.contentViewController?.view.setFrameSize(size)
+        popover.contentSize = size
+    }
+
+    @objc private func showPanel() {
+        guard let button = statusItem.button else { return }
+        if NSApp.currentEvent?.type == .rightMouseUp, let menu = legacyMenu {
+            refresh()
+            rebuildRecentMenu()
+            statusItem.menu = menu
+            button.performClick(nil)
+            statusItem.menu = nil
+            return
+        }
+        if popover.isShown { popover.performClose(nil) }
+        else {
+            refresh()
+            sizePanel(for: button)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
 }
