@@ -13,7 +13,8 @@ func usage() {
 
     MENU BAR APP CONTROL (when the app is running):
       gigi status | start | stop | toggle | jiggle
-      gigi until HH:MM | duration MIN | reload | menu | panel | quit-app
+      gigi until HH:MM | duration MIN | reload | menu | quit-app
+      gigi panel [movement|settings]   open the panel, optionally on a drawer
 
     OPTIONS:
       --config PATH           config JSON (default ~/.config/gigi/config.json)
@@ -294,7 +295,12 @@ case "menu":
     forwardToApp("menu", hint: "hint: open app/GiGi.app")
 
 case "panel":
-    forwardToApp("panel", hint: "hint: open app/GiGi.app")
+    let page = options.extra.first?.lowercased() ?? ""
+    guard page.isEmpty || page == "movement" || page == "settings" else {
+        print("usage: gigi panel [movement|settings]")
+        exit(2)
+    }
+    forwardToApp(page.isEmpty ? "panel" : "panel \(page)", hint: "hint: open app/GiGi.app")
 
 case "quit-app":
     forwardToApp("quit", hint: "the app was already closed")

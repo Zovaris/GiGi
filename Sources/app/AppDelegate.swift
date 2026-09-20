@@ -150,9 +150,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             reloadConfig()
             return "ok: config reloaded (schedule \(engine.config.schedule.enabled ? "ON" : "OFF"))"
         case "panel":
-            guard !popover.isShown else { return "ok: panel already open" }
-            showPanel()
-            return "ok: panel open"
+            let destination = parts.count > 1 ? parts[1].lowercased() : ""
+            let page = destination == "movement" || destination == "settings" ? destination : nil
+            if !popover.isShown { showPanel() }
+            panel.drawer = page
+            panel.topToken = UUID()
+            return page.map { "ok: panel open (\($0))" } ?? "ok: panel open"
         case "menu":
             let lines: [String] = (legacyMenu?.items ?? []).map { item in
                 let mark = item.state == .on ? "[x] " : (item.action != nil ? "[ ] " : "    ")
