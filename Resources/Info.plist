@@ -11,7 +11,7 @@
 	<key>CFBundleIconFile</key>
 	<string>GiGi.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.codebuff.gigi</string>
+	<string>com.justcallmebryan.gigi</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleLocalizations</key>

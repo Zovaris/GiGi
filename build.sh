@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 SOURCE_VERSION="$(plutil -extract CFBundleShortVersionString raw Resources/Info.plist)"
 VERSION="${1:-$SOURCE_VERSION}"
-BUNDLE_ID="com.codebuff.gigi"
+BUNDLE_ID="com.justcallmebryan.gigi"
 
 CORE=(Sources/Core/*.swift)
 SWIFT_FLAGS=(-O -swift-version 5 -framework CoreGraphics -framework IOKit -framework ApplicationServices)

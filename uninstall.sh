@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LABEL="com.codebuff.gigi"
+LABEL="com.justcallmebryan.gigi"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 APP_DST="/Applications/GiGi.app"
 

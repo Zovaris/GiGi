@@ -240,7 +240,7 @@ that version as its notes. The bundle is ad-hoc signed, so Gatekeeper asks for a
 - `Sources/cli`: CLI and LaunchAgent frontend.
 - `Resources`: bundle metadata, icon, and localizations.
 
-The menu bar app exposes `CFMessagePort` as `com.codebuff.gigi.control` for CLI control.
+The menu bar app exposes `CFMessagePort` as `com.justcallmebryan.gigi.control` for CLI control.
 
 ## Limits
 

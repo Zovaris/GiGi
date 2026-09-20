@@ -1,7 +1,7 @@
 import Foundation
 
 enum ControlIPC {
-    static let portName = "com.codebuff.gigi.control"
+    static let portName = "com.justcallmebryan.gigi.control"
     static let messageID: Int32 = 1
 
     static func send(_ request: String, timeout: TimeInterval = 2.0) -> String? {

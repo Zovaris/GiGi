@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-LABEL="com.codebuff.gigi"
+LABEL="com.justcallmebryan.gigi"
 BIN="$ROOT/bin/gigi"
 APP_SRC="$ROOT/app/GiGi.app"
 APP_DST="/Applications/GiGi.app"
