@@ -59,8 +59,8 @@ window at runtime: the hours stay editable and the card says the window is being
 schedule takes effect again as soon as Mode returns to **Schedule**. The choice lives in the app,
 not in the configuration file, and `--ignore-schedule` does the same for `gigi run`.
 **Battery limit** stops GiGi when the internal battery reaches the selected percentage (or lower),
-only while running on battery power. It defaults to off, and the panel offers 5% to 30% in steps
-of five, which is the range that saves power without cutting a session short; the configuration
+only while running on battery power. It defaults to off, and the panel offers 5% to 50% in steps
+of five; the configuration
 file accepts anything between 1% and 100%, and a threshold written there keeps showing in the
 panel. It works with
 Timer, Schedule, and Always mode. It clears the session deadline and stays stopped until
