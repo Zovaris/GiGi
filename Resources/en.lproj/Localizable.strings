@@ -139,3 +139,13 @@
 "This display does not allow brightness control" = "This display does not allow brightness control";
 
 "Runs until you stop it" = "Runs until you stop it";
+
+"Battery limit" = "Battery limit";
+
+"Stop GiGi at" = "Stop GiGi at";
+
+"Battery percentage" = "Battery percentage";
+
+"Only while using battery power" = "Only while using battery power";
+
+"Stopped at battery limit" = "Stopped at battery limit";

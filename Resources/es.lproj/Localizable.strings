@@ -139,3 +139,13 @@
 "This display does not allow brightness control" = "Esta pantalla no permite controlar el brillo";
 
 "Runs until you stop it" = "Activo hasta que lo detengas";
+
+"Battery limit" = "Límite de batería";
+
+"Stop GiGi at" = "Detener GiGi al";
+
+"Battery percentage" = "Porcentaje de batería";
+
+"Only while using battery power" = "Solo al usar la batería";
+
+"Stopped at battery limit" = "Detenido por límite de batería";

@@ -522,6 +522,7 @@ private extension AppDelegate {
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
         panel.dimPreview = { [weak self] in self?.previewPanelDim() }
         panel.dimChanged = { [weak self] in self?.applyPanelDim() }
+        panel.batteryChanged = { [weak self] in self?.applyPanelBattery() }
         panel.scheduleChanged = { [weak self] in self?.applyPanelSchedule() }
         panel.recordHotkey = { [weak self] in self?.toggleHotkeyRecording() }
         panel.accessibility = { [weak self] in self?.openAccessibilityPane() }
@@ -548,6 +549,8 @@ private extension AppDelegate {
         panel.scrollMode = engine.config.scrollMode
         panel.dimWhileActive = engine.config.dimWhileActive
         panel.dimBrightness = engine.config.dimBrightness
+        panel.batteryLimitEnabled = engine.config.batteryLimitEnabled
+        panel.batteryLimitPercent = engine.config.batteryLimitPercent
         let schedule = engine.config.schedule
         panel.scheduleEnabled = schedule.enabled
         panel.scheduleDays = Set(schedule.days)
@@ -675,6 +678,16 @@ private extension AppDelegate {
         engine.setDim(enabled: panel.dimWhileActive, brightness: panel.dimBrightness)
         panel.dimBrightness = engine.config.dimBrightness
         panel.status = engine.status
+    }
+
+    private func applyPanelBattery() {
+        var config = engine.config
+        config.batteryLimitEnabled = panel.batteryLimitEnabled
+        config.batteryLimitPercent = panel.batteryLimitPercent
+        engine.apply(config: config.sanitized())
+        panel.error = saveConfig(engine.config, path: AppDelegate.configPathFromArguments())
+            ? nil : L("Could not write the configuration file")
+        refresh()
     }
 
     private func applyPanelSchedule() {

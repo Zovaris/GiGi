@@ -55,6 +55,9 @@ final class PanelModel: ObservableObject {
     @Published var scrollMode = "none"
     @Published var dimWhileActive = false
     @Published var dimBrightness: Double = 0.35
+    @Published var batteryLimitEnabled = false
+    @Published var batteryLimitPercent = 20
+    var batteryChanged: () -> Void = {}
     @Published var scheduleEnabled = false
     @Published var scheduleStart = Date()
     @Published var scheduleEnd = Date()
@@ -158,6 +161,7 @@ struct PanelView: View {
     }
 
     private var statusLabel: String {
+        if model.status.batteryStopped { return L("Stopped at battery limit") }
         if !model.status.accessibilityTrusted {
             return model.status.displayAssertion ? L("Screen awake · permission pending") : L("Accessibility permission needed")
         }
@@ -510,9 +514,47 @@ struct PanelView: View {
             Divider()
             timerBody
             Divider()
+            batteryBody
+            Divider()
             modeRow
         }
         .cardStyle()
+    }
+
+    private var batteryBody: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                cardTitle(L("Battery limit"), systemImage: "battery.25percent")
+                Spacer(minLength: 8)
+                Toggle(L("Battery limit"), isOn: Binding(get: { model.batteryLimitEnabled }, set: {
+                    model.batteryLimitEnabled = $0
+                    model.batteryChanged()
+                }))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .pointerCursor()
+            }
+            HStack(spacing: 8) {
+                Text(L("Stop GiGi at")).font(.subheadline)
+                Picker(L("Battery percentage"), selection: Binding(get: { model.batteryLimitPercent }, set: {
+                    model.batteryLimitPercent = $0
+                    model.batteryChanged()
+                })) {
+                    ForEach(1...100, id: \.self) { percent in
+                        Text("\(percent)%").tag(percent)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .frame(width: 68)
+                .pointerCursor()
+                Spacer(minLength: 0)
+            }
+            .disabled(!model.batteryLimitEnabled)
+            Text(L("Only while using battery power"))
+                .font(.caption).foregroundStyle(.secondary)
+        }
     }
 
     private var scheduleBody: some View {
