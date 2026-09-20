@@ -23,6 +23,7 @@ struct Config: Codable {
     var dimBrightness: Double
     var batteryLimitEnabled: Bool
     var batteryLimitPercent: Int
+    var notificationsEnabled: Bool
     var hotkey: String
     var appCondition: AppCondition
     var schedule: Schedule
@@ -43,6 +44,7 @@ struct Config: Codable {
         dimBrightness: 0.35,
         batteryLimitEnabled: false,
         batteryLimitPercent: 20,
+        notificationsEnabled: true,
         hotkey: Hotkey.default.config,
         appCondition: AppCondition(),
         schedule: Schedule(
@@ -92,6 +94,7 @@ extension Config {
         dimBrightness = try container.decodeIfPresent(Double.self, forKey: .dimBrightness) ?? fallback.dimBrightness
         batteryLimitEnabled = try container.decodeIfPresent(Bool.self, forKey: .batteryLimitEnabled) ?? fallback.batteryLimitEnabled
         batteryLimitPercent = try container.decodeIfPresent(Int.self, forKey: .batteryLimitPercent) ?? fallback.batteryLimitPercent
+        notificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? fallback.notificationsEnabled
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? fallback.hotkey
         appCondition = try container.decodeIfPresent(AppCondition.self, forKey: .appCondition) ?? fallback.appCondition
         schedule = try container.decodeIfPresent(Schedule.self, forKey: .schedule) ?? fallback.schedule

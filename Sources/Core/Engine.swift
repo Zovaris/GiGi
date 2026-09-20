@@ -37,6 +37,9 @@ final class Engine {
     var preventDisplaySleep: Bool
     var wakeOnWindowStart: Bool
     var onStatusChange: (() -> Void)?
+    var notices = NoticeCenter()
+    var isAccessibilityTrusted: () -> Bool = accessibilityTrusted
+    var requestAccessibilityPermission: () -> Void = { requestAccessibility(prompt: true) }
 
     private(set) var running = false
     private(set) var jiggles = 0
@@ -54,10 +57,12 @@ final class Engine {
         self.config = config
         self.preventDisplaySleep = config.preventDisplaySleep
         self.wakeOnWindowStart = config.wakeDisplayOnWindowStart
+        notices.enabled = config.notificationsEnabled
     }
 
     func start(reason: String) {
         guard !running else { return }
+        notices.beginSession()
         waitingForApp = false
         batteryStopped = false
         running = true
@@ -112,6 +117,7 @@ final class Engine {
 
     func apply(config newConfig: Config, respectRuntimeToggles: Bool = true) {
         config = newConfig
+        notices.enabled = newConfig.notificationsEnabled
         if !respectRuntimeToggles {
             preventDisplaySleep = newConfig.preventDisplaySleep
             wakeOnWindowStart = newConfig.wakeDisplayOnWindowStart
@@ -141,6 +147,7 @@ final class Engine {
         if let deadline, now >= deadline {
             self.deadline = nil
             stop(reason: "timer expired")
+            notices.offer(.timerExpired)
             return false
         }
         guard running else { return true }
@@ -148,7 +155,9 @@ final class Engine {
            battery.onBattery, battery.percent <= config.batteryLimitPercent {
             batteryStopped = true
             deadline = nil
-            stop(reason: "battery at \(battery.percent)% (limit \(config.batteryLimitPercent)%)")
+            let limit = config.batteryLimitPercent
+            stop(reason: "battery at \(battery.percent)% (limit \(limit)%)")
+            notices.offer(.batteryStop(percent: battery.percent, limit: limit))
             return false
         }
 
@@ -240,12 +249,13 @@ final class Engine {
     }
 
     private func ensureAccessibility() -> Bool {
-        if accessibilityTrusted() { return true }
+        if isAccessibilityTrusted() { return true }
         if !warnedAboutAccessibility {
             warnedAboutAccessibility = true
             Log.error("no Accessibility permission: macOS discards cursor events")
             Log.info("System Settings > Privacy & Security > Accessibility")
-            requestAccessibility(prompt: true)
+            notices.offer(.missingAccessibility)
+            requestAccessibilityPermission()
         }
         return false
     }
@@ -265,7 +275,7 @@ final class Engine {
             outOfSchedule: running && mode == .schedule && !config.schedule.allows(Date()),
             deadline: deadline,
             nextTransition: config.schedule.nextTransition(after: Date()),
-            accessibilityTrusted: accessibilityTrusted()
+            accessibilityTrusted: isAccessibilityTrusted()
         )
     }
 
