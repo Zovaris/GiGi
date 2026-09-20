@@ -58,6 +58,9 @@ final class PanelModel: ObservableObject {
     @Published var batteryLimitEnabled = false
     @Published var batteryLimitPercent = 20
     var batteryChanged: () -> Void = {}
+    @Published var appCondition = AppCondition()
+    var appConditionChanged: () -> Void = {}
+    var addApp: () -> Void = {}
     @Published var scheduleEnabled = false
     @Published var scheduleStart = Date()
     @Published var scheduleEnd = Date()
@@ -165,6 +168,7 @@ struct PanelView: View {
         if !model.status.accessibilityTrusted {
             return model.status.displayAssertion ? L("Screen awake · permission pending") : L("Accessibility permission needed")
         }
+        if model.status.waitingForApp { return L("Waiting for selected app") }
         if model.status.running && model.status.outOfSchedule { return L("Waiting for schedule") }
         return model.status.running ? L("Active") : L("Inactive")
     }
@@ -174,6 +178,7 @@ struct PanelView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     scheduleCard
+                    appConditionCard
                     drawerCard
                     if let error = model.error {
                         Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -559,6 +564,73 @@ struct PanelView: View {
 
     private var batteryChoices: [Int] {
         Set(Config.batteryLimitChoices).union([model.batteryLimitPercent]).sorted()
+    }
+
+    private var appConditionCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                cardTitle(L("Only while an app…"), systemImage: "app.dashed")
+                Spacer(minLength: 8)
+                Toggle(L("Only while an app…"), isOn: Binding(get: { model.appCondition.enabled }, set: {
+                    model.appCondition.enabled = $0
+                    model.appConditionChanged()
+                }))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .pointerCursor()
+            }
+            Picker(L("App condition"), selection: Binding(get: { model.appCondition.mode }, set: {
+                model.appCondition.mode = $0
+                model.appConditionChanged()
+            })) {
+                Text(L("Is running")).tag("running")
+                Text(L("Is in front")).tag("frontmost")
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .disabled(!model.appCondition.enabled)
+            ForEach(model.appCondition.apps) { app in
+                HStack(spacing: 8) {
+                    Image(nsImage: appIcon(app.id))
+                        .resizable().frame(width: 22, height: 22)
+                        .accessibilityHidden(true)
+                    Text(app.name).font(.subheadline).lineLimit(1)
+                    Spacer(minLength: 8)
+                    Button {
+                        model.appCondition.apps.removeAll { $0.id == app.id }
+                        model.appConditionChanged()
+                    } label: {
+                        Image(systemName: "minus.circle").foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(String(format: L("Remove %@"), app.name))
+                    .pointerCursor()
+                }
+            }
+            HStack(spacing: 8) {
+                Button(action: model.addApp) {
+                    Label(L("Add app"), systemImage: "plus")
+                }
+                .controlSize(.small)
+                .pointerCursor()
+                if model.appCondition.apps.isEmpty {
+                    Text(L("Choose an app to watch"))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            if !model.appCondition.apps.isEmpty {
+                Text(L("Any selected app can enable activity"))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .cardStyle()
+    }
+
+    private func appIcon(_ id: String) -> NSImage {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else {
+            return NSImage(systemSymbolName: "app", accessibilityDescription: nil) ?? NSImage()
+        }
+        return NSWorkspace.shared.icon(forFile: url.path)
     }
 
     private var scheduleBody: some View {

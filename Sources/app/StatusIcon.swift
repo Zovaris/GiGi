@@ -17,7 +17,7 @@ enum StatusIcon {
     static func state(for status: Engine.Status) -> State {
         if !status.accessibilityTrusted { return .permissionNeeded }
         if !status.running { return .inactive }
-        return status.outOfSchedule ? .waiting : .active
+        return (status.outOfSchedule || status.waitingForApp) ? .waiting : .active
     }
 
     private static func drawCursor(ink: NSColor, running: Bool) {

@@ -2,6 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import ServiceManagement
 import SwiftUI
+import UniformTypeIdentifiers
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusBadge = StatusBadgeView()
@@ -522,6 +523,8 @@ private extension AppDelegate {
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
         panel.dimPreview = { [weak self] in self?.previewPanelDim() }
         panel.dimChanged = { [weak self] in self?.applyPanelDim() }
+        panel.appConditionChanged = { [weak self] in self?.applyPanelAppCondition() }
+        panel.addApp = { [weak self] in self?.chooseApps() }
         panel.batteryChanged = { [weak self] in self?.applyPanelBattery() }
         panel.scheduleChanged = { [weak self] in self?.applyPanelSchedule() }
         panel.recordHotkey = { [weak self] in self?.toggleHotkeyRecording() }
@@ -549,6 +552,7 @@ private extension AppDelegate {
         panel.scrollMode = engine.config.scrollMode
         panel.dimWhileActive = engine.config.dimWhileActive
         panel.dimBrightness = engine.config.dimBrightness
+        panel.appCondition = engine.config.appCondition
         panel.batteryLimitEnabled = engine.config.batteryLimitEnabled
         panel.batteryLimitPercent = engine.config.batteryLimitPercent
         let schedule = engine.config.schedule
@@ -678,6 +682,36 @@ private extension AppDelegate {
         engine.setDim(enabled: panel.dimWhileActive, brightness: panel.dimBrightness)
         panel.dimBrightness = engine.config.dimBrightness
         panel.status = engine.status
+    }
+
+    private func applyPanelAppCondition() {
+        var config = engine.config
+        config.appCondition = panel.appCondition
+        engine.apply(config: config.sanitized())
+        panel.error = saveConfig(engine.config, path: AppDelegate.configPathFromArguments())
+            ? nil : L("Could not write the configuration file")
+        refresh()
+    }
+
+    private func chooseApps() {
+        let picker = NSOpenPanel()
+        picker.allowedContentTypes = [.application]
+        picker.allowsMultipleSelection = true
+        picker.canChooseDirectories = false
+        picker.directoryURL = URL(fileURLWithPath: "/Applications")
+        picker.prompt = L("Add app")
+        NSApp.activate(ignoringOtherApps: true)
+        picker.begin { [weak self] result in
+            guard let self, result == .OK else { return }
+            for url in picker.urls {
+                guard let bundle = Bundle(url: url), let id = bundle.bundleIdentifier else { continue }
+                guard !self.panel.appCondition.apps.contains(where: { $0.id == id }) else { continue }
+                let name = FileManager.default.displayName(atPath: url.path)
+                    .replacingOccurrences(of: ".app", with: "")
+                self.panel.appCondition.apps.append(SelectedApp(id: id, name: name))
+            }
+            self.applyPanelAppCondition()
+        }
     }
 
     private func applyPanelBattery() {

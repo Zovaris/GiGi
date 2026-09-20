@@ -149,3 +149,21 @@
 "Only while using battery power" = "Only while using battery power";
 
 "Stopped at battery limit" = "Stopped at battery limit";
+
+"Only while an app…" = "Only while an app…";
+
+"App condition" = "App condition";
+
+"Is running" = "Is running";
+
+"Is in front" = "Is in front";
+
+"Remove %@" = "Remove %@";
+
+"Add app" = "Add app";
+
+"Choose an app to watch" = "Choose an app to watch";
+
+"Any selected app can enable activity" = "Any selected app can enable activity";
+
+"Waiting for selected app" = "Waiting for selected app";

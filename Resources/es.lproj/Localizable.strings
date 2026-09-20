@@ -149,3 +149,21 @@
 "Only while using battery power" = "Solo al usar la batería";
 
 "Stopped at battery limit" = "Detenido por límite de batería";
+
+"Only while an app…" = "Solo mientras una app…";
+
+"App condition" = "Condición de la app";
+
+"Is running" = "Está abierta";
+
+"Is in front" = "Está al frente";
+
+"Remove %@" = "Eliminar %@";
+
+"Add app" = "Añadir app";
+
+"Choose an app to watch" = "Elige una app para observar";
+
+"Any selected app can enable activity" = "Basta con que una de las apps cumpla";
+
+"Waiting for selected app" = "Esperando la app seleccionada";
