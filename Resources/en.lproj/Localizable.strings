@@ -58,9 +58,6 @@
 "Until" = "Until";
 "Minutes" = "Minutes";
 "minutes" = "minutes";
-"1 h" = "1 h";
-"4 h" = "4 h";
-"15 m" = "15 m";
 "End time" = "End time";
 "Ends at %@" = "Ends at %@";
 "Screen stays on while active" = "Screen stays on while active";
@@ -76,7 +73,6 @@
 "%d movements" = "%d movements";
 "Idle %.0fs" = "Idle %.0fs";
 "Screen awake · permission pending" = "Screen awake · permission pending";
-"Apply timer" = "Apply timer";
 "Movement" = "Movement";
 "Idle delay" = "Idle delay";
 "Move every" = "Move every";

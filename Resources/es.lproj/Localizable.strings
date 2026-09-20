@@ -58,9 +58,6 @@
 "Until" = "Hasta";
 "Minutes" = "Minutos";
 "minutes" = "minutos";
-"1 h" = "1 h";
-"4 h" = "4 h";
-"15 m" = "15 min";
 "End time" = "Hora de finalización";
 "Ends at %@" = "Termina a las %@";
 "Screen stays on while active" = "La pantalla permanece activa mientras GiGi corre";
@@ -76,7 +73,6 @@
 "%d movements" = "%d movimientos";
 "Idle %.0fs" = "Inactivo %.0fs";
 "Screen awake · permission pending" = "Pantalla activa · permiso pendiente";
-"Apply timer" = "Aplicar temporizador";
 "Movement" = "Movimiento";
 "Idle delay" = "Tras inactividad";
 "Move every" = "Mover cada";
