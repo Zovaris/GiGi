@@ -9,119 +9,55 @@ let brandURL = root.appendingPathComponent("assets/brand/gigi-icon.png")
 let previewURL = root.appendingPathComponent(".build/icon-preview.html")
 let canvasSize = 1024
 
-let backgroundTop = CGColor(red: 0.51, green: 0.38, blue: 1.00, alpha: 1)
-let backgroundBottom = CGColor(red: 0.16, green: 0.09, blue: 0.62, alpha: 1)
-
-func pointerPath(in rect: CGRect) -> CGPath {
-    let points: [CGPoint] = [
-        CGPoint(x: 0.00, y: 0.02),
-        CGPoint(x: 0.00, y: 0.62),
-        CGPoint(x: 0.15, y: 0.48),
-        CGPoint(x: 0.26, y: 0.72),
-        CGPoint(x: 0.38, y: 0.66),
-        CGPoint(x: 0.27, y: 0.43),
-        CGPoint(x: 0.48, y: 0.41),
-    ]
-    let path = CGMutablePath()
-    for (index, point) in points.enumerated() {
-        let mapped = CGPoint(x: rect.minX + point.x * rect.width,
-                             y: rect.maxY - point.y * rect.height)
-        index == 0 ? path.move(to: mapped) : path.addLine(to: mapped)
-    }
-    path.closeSubpath()
-    return path
-}
-
-func motionArc(center: CGPoint, radius: CGFloat, start: CGFloat, end: CGFloat) -> CGPath {
-    let path = CGMutablePath()
-    path.addArc(center: center, radius: radius, startAngle: start, endAngle: end, clockwise: false)
-    return path
-}
-
 func render(size: Int) -> CGImage? {
     let space = CGColorSpaceCreateDeviceRGB()
-    guard let context = CGContext(
-        data: nil,
-        width: size,
-        height: size,
-        bitsPerComponent: 8,
-        bytesPerRow: 0,
-        space: space,
-        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-    ) else { return nil }
-
-    let side = CGFloat(size) * 0.825
-    let squircle = CGRect(x: (CGFloat(size) - side) / 2,
-                          y: (CGFloat(size) - side) / 2,
-                          width: side,
-                          height: side)
-    let corner = side * 0.2237
+    guard let context = CGContext(data: nil, width: size, height: size,
+                                  bitsPerComponent: 8, bytesPerRow: 0, space: space,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+    context.scaleBy(x: CGFloat(size) / 1024, y: CGFloat(size) / 1024)
     context.setAllowsAntialiasing(true)
-    context.interpolationQuality = .high
-
-    let shape = CGPath(roundedRect: squircle, cornerWidth: corner, cornerHeight: corner, transform: nil)
+    let tile = CGRect(x: 88, y: 88, width: 848, height: 848)
+    let outline = CGPath(roundedRect: tile, cornerWidth: 190, cornerHeight: 190, transform: nil)
     context.saveGState()
-    context.addPath(shape)
+    context.addPath(outline)
     context.clip()
-    if let gradient = CGGradient(colorsSpace: space,
-                                 colors: [backgroundTop, backgroundBottom] as CFArray,
-                                 locations: [0, 1]) {
-        context.drawLinearGradient(gradient,
-                                   start: CGPoint(x: squircle.minX, y: squircle.maxY),
-                                   end: CGPoint(x: squircle.maxX, y: squircle.minY),
-                                   options: [])
-    }
-    if let glow = CGGradient(colorsSpace: space,
-                             colors: [CGColor(red: 1, green: 1, blue: 1, alpha: 0.30),
-                                      CGColor(red: 1, green: 1, blue: 1, alpha: 0.00)] as CFArray,
-                             locations: [0, 1]) {
-        let focus = CGPoint(x: squircle.midX, y: squircle.maxY - side * 0.08)
-        context.drawRadialGradient(glow,
-                                   startCenter: focus, startRadius: 0,
-                                   endCenter: focus, endRadius: side * 0.72,
-                                   options: [])
+    let top = CGColor(red: 1.0, green: 0.40, blue: 0.36, alpha: 1)
+    let bottom = CGColor(red: 0.91, green: 0.20, blue: 0.29, alpha: 1)
+    if let gradient = CGGradient(colorsSpace: space, colors: [bottom, top] as CFArray, locations: [0, 1]) {
+        context.drawLinearGradient(gradient, start: CGPoint(x: 512, y: 88),
+                                   end: CGPoint(x: 512, y: 936), options: [])
     }
     context.restoreGState()
 
     context.saveGState()
-    context.addPath(shape)
-    context.setStrokeColor(CGColor(red: 1, green: 1, blue: 1, alpha: 0.16))
-    context.setLineWidth(max(1, side * 0.012))
-    context.strokePath()
-    context.restoreGState()
-
+    context.translateBy(x: 545, y: 520)
+    context.rotate(by: .pi / 7)
+    let mouse = CGPath(roundedRect: CGRect(x: -158, y: -258, width: 316, height: 516),
+                       cornerWidth: 158, cornerHeight: 158, transform: nil)
     context.saveGState()
-    context.setLineCap(.round)
-    let arcCenter = CGPoint(x: squircle.minX + side * 0.36, y: squircle.minY + side * 0.48)
-    let boost = size <= 32 ? 1.16 : 1.0
-    let arcs: [(CGFloat, CGFloat, CGFloat)] = [(side * 0.21, 0.70, 0.16), (side * 0.32, 0.60, 0.13)]
-    for (radius, alpha, width) in arcs {
-        context.addPath(motionArc(center: arcCenter,
-                                  radius: radius * boost,
-                                  start: .pi * 0.78,
-                                  end: .pi * 1.28))
-        context.setStrokeColor(CGColor(red: 1, green: 1, blue: 1, alpha: alpha))
-        context.setLineWidth(max(1, side * width * 0.17))
-        context.strokePath()
-    }
-    context.restoreGState()
-
-    context.saveGState()
-    let pointerBox = CGRect(x: squircle.minX + side * 0.40,
-                            y: squircle.minY + side * 0.22,
-                            width: side * 0.50 * boost,
-                            height: side * 0.58 * boost)
-    context.translateBy(x: pointerBox.midX, y: pointerBox.midY)
-    context.rotate(by: -0.14)
-    context.translateBy(x: -pointerBox.midX, y: -pointerBox.midY)
-    context.setShadow(offset: CGSize(width: 0, height: -side * 0.012),
-                      blur: side * 0.05,
-                      color: CGColor(red: 0.05, green: 0.02, blue: 0.25, alpha: 0.45))
-    context.addPath(pointerPath(in: pointerBox))
-    context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+    context.setShadow(offset: CGSize(width: 0, height: -14), blur: 22,
+                      color: CGColor(red: 0.42, green: 0.06, blue: 0.10, alpha: 0.24))
+    context.addPath(mouse)
+    context.setFillColor(CGColor(red: 1, green: 0.98, blue: 0.95, alpha: 1))
     context.fillPath()
     context.restoreGState()
 
+    let wheel = CGPath(roundedRect: CGRect(x: -19, y: 92, width: 38, height: 96),
+                       cornerWidth: 19, cornerHeight: 19, transform: nil)
+    context.addPath(wheel)
+    context.setFillColor(CGColor(red: 0.93, green: 0.26, blue: 0.30, alpha: 1))
+    context.fillPath()
+    context.restoreGState()
+
+    context.setLineCap(.round)
+    context.setLineWidth(30)
+    context.setStrokeColor(CGColor(red: 1, green: 0.98, blue: 0.95, alpha: 0.85))
+    for (start, end) in [(CGPoint(x: 240, y: 430), CGPoint(x: 300, y: 455)),
+                         (CGPoint(x: 260, y: 325), CGPoint(x: 340, y: 360))] {
+        context.move(to: start)
+        context.addLine(to: end)
+        context.strokePath()
+    }
     return context.makeImage()
 }
 
