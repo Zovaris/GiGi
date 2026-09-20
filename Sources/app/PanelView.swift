@@ -134,6 +134,7 @@ struct PanelView: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .accessibilityLabel(L("GiGi active"))
+                .pointerCursor()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 13)
@@ -212,6 +213,7 @@ struct PanelView: View {
         .buttonStyle(.plain)
         .accessibilityLabel(title)
         .accessibilityValue(detail ?? "")
+        .pointerCursor()
     }
 
     private func drawerPage(_ kind: String) -> some View {
@@ -230,6 +232,7 @@ struct PanelView: View {
                 .buttonStyle(.plain)
                 .keyboardShortcut(.cancelAction)
                 .accessibilityLabel(L("Close"))
+                .pointerCursor()
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 11)
@@ -259,6 +262,7 @@ struct PanelView: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+            .pointerCursor()
             if model.timerKind == "duration" {
                 HStack(spacing: 8) {
                     TextField(L("Minutes"), value: $model.minutes, format: .number.precision(.fractionLength(0...1)))
@@ -273,6 +277,7 @@ struct PanelView: View {
                         }
                         .buttonStyle(.borderless)
                         .foregroundStyle(.tint)
+                        .pointerCursor()
                     }
                 }
                 .onSubmit { model.timerChanged() }
@@ -284,6 +289,7 @@ struct PanelView: View {
                 if model.timerKind != "none" {
                     Button(L("Apply timer"), action: model.timerChanged)
                         .controlSize(.small)
+                        .pointerCursor()
                 }
                 Spacer(minLength: 8)
                 if let deadlineText {
@@ -325,6 +331,7 @@ struct PanelView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
+                .pointerCursor()
                 Spacer(minLength: 0)
             }
             HStack(spacing: 6) {
@@ -340,6 +347,7 @@ struct PanelView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
+                .pointerCursor()
                 Spacer(minLength: 0)
             }
             if model.clickMode != "none" || model.scrollMode != "none" {
@@ -352,6 +360,7 @@ struct PanelView: View {
             HStack {
                 Button(L("Apply movement"), action: model.movementChanged)
                     .controlSize(.small)
+                    .pointerCursor()
                 Spacer(minLength: 8)
             }
         }
@@ -364,14 +373,14 @@ struct PanelView: View {
             Spacer(minLength: 8)
             if model.recordingHotkey {
                 Text(L("Press a key combination")).font(.caption).foregroundStyle(.secondary)
-                Button(L("Cancel"), action: model.recordHotkey).controlSize(.small)
+                Button(L("Cancel"), action: model.recordHotkey).controlSize(.small).pointerCursor()
             } else {
                 Text(model.hotkeyDisplay.isEmpty ? "—" : model.hotkeyDisplay)
                     .font(.caption.weight(.semibold))
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
-                Button(L("Record"), action: model.recordHotkey).controlSize(.small)
+                Button(L("Record"), action: model.recordHotkey).controlSize(.small).pointerCursor()
             }
         }
     }
@@ -397,6 +406,7 @@ struct PanelView: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .accessibilityLabel(L("Keep display awake"))
+                .pointerCursor()
         }
         .controlSize(.small)
     }
@@ -415,6 +425,7 @@ struct PanelView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
+            .pointerCursor()
         }
         .cardStyle()
     }
@@ -428,6 +439,7 @@ struct PanelView: View {
             Button(L("Open Accessibility settings"), action: model.accessibility)
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .pointerCursor()
         }
         .cardStyle()
         .tint(.orange)
@@ -445,6 +457,7 @@ struct PanelView: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                .pointerCursor()
             }
             displaySetting
             Divider()
@@ -463,6 +476,7 @@ struct PanelView: View {
                 }
                 .labelsHidden()
                 .frame(width: 132)
+                .pointerCursor()
             }
             HStack {
                 Label(L("Appearance"), systemImage: "circle.lefthalf.filled")
@@ -477,6 +491,7 @@ struct PanelView: View {
                 }
                 .labelsHidden()
                 .frame(width: 132)
+                .pointerCursor()
             }
             Divider()
             settingsAction("Open log", symbol: "doc.text", action: model.log)
@@ -503,6 +518,7 @@ struct PanelView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .pointerCursor()
     }
 
     private var footer: some View {
@@ -521,6 +537,7 @@ struct PanelView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .disabled(!model.status.accessibilityTrusted)
+            .pointerCursor(model.status.accessibilityTrusted)
             Menu {
                 Button(L("Quit"), action: model.quit)
             } label: {
@@ -529,6 +546,7 @@ struct PanelView: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .frame(width: 24)
+            .pointerCursor()
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -549,5 +567,17 @@ private extension View {
         frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
             .background(.quaternary.opacity(0.34), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    func pointerCursor(_ enabled: Bool = true) -> some View {
+        if #available(macOS 15.0, *) {
+            pointerStyle(enabled ? .link : .default)
+        } else {
+            onHover { hovering in
+                guard hovering else { return }
+                if enabled { NSCursor.pointingHand.set() } else { NSCursor.arrow.set() }
+            }
+        }
     }
 }
