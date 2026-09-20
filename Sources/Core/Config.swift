@@ -21,6 +21,8 @@ struct Config: Codable {
     var scrollMode: String
     var dimWhileActive: Bool
     var dimBrightness: Double
+    var batteryLimitEnabled: Bool
+    var batteryLimitPercent: Int
     var hotkey: String
     var schedule: Schedule
 
@@ -37,6 +39,8 @@ struct Config: Codable {
         scrollMode: "none",
         dimWhileActive: false,
         dimBrightness: 0.35,
+        batteryLimitEnabled: false,
+        batteryLimitPercent: 20,
         hotkey: Hotkey.default.config,
         schedule: Schedule(
             enabled: false,
@@ -60,6 +64,7 @@ struct Config: Codable {
         if config.hotkey != Hotkey.disabledName && Hotkey.parse(config.hotkey) == nil {
             config.hotkey = Config.default.hotkey
         }
+        config.batteryLimitPercent = min(100, max(1, config.batteryLimitPercent))
         let selected = Set(config.schedule.days.map { $0.lowercased() })
         config.schedule.days = weekdayNames.filter { selected.contains($0) }
         return config
@@ -79,6 +84,8 @@ extension Config {
         scrollMode = try container.decodeIfPresent(String.self, forKey: .scrollMode) ?? fallback.scrollMode
         dimWhileActive = try container.decodeIfPresent(Bool.self, forKey: .dimWhileActive) ?? fallback.dimWhileActive
         dimBrightness = try container.decodeIfPresent(Double.self, forKey: .dimBrightness) ?? fallback.dimBrightness
+        batteryLimitEnabled = try container.decodeIfPresent(Bool.self, forKey: .batteryLimitEnabled) ?? fallback.batteryLimitEnabled
+        batteryLimitPercent = try container.decodeIfPresent(Int.self, forKey: .batteryLimitPercent) ?? fallback.batteryLimitPercent
         hotkey = try container.decodeIfPresent(String.self, forKey: .hotkey) ?? fallback.hotkey
         schedule = try container.decodeIfPresent(Schedule.self, forKey: .schedule) ?? fallback.schedule
     }

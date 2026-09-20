@@ -3,6 +3,7 @@ import Foundation
 @main
 struct TimerTests {
     static func main() {
+        BatteryTests.run()
         let engine = Engine(config: .default)
         let now = Date()
         engine.start(reason: "timer test")

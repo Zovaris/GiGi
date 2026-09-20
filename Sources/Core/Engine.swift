@@ -8,6 +8,7 @@ final class Engine {
     }
 
     struct Status {
+        var batteryStopped: Bool = false
         var running: Bool = false
         var windowActive: Bool = false
         var jiggles: Int = 0
@@ -25,6 +26,8 @@ final class Engine {
     private(set) var config: Config
     private let power = PowerAssertions()
     var brightness: Brightness = .system
+    var readBattery: () -> BatteryState? = BatteryState.current
+    private var batteryStopped = false
 
     var mode: Mode = .schedule
     var eventSource: CGEventSourceStateID?
@@ -52,6 +55,7 @@ final class Engine {
 
     func start(reason: String) {
         guard !running else { return }
+        batteryStopped = false
         running = true
         windowActive = false
         lastJiggle = nil
@@ -136,6 +140,13 @@ final class Engine {
             return false
         }
         guard running else { return true }
+        if config.batteryLimitEnabled, let battery = readBattery(),
+           battery.onBattery, battery.percent <= config.batteryLimitPercent {
+            batteryStopped = true
+            deadline = nil
+            stop(reason: "battery at \(battery.percent)% (limit \(config.batteryLimitPercent)%)")
+            return false
+        }
 
         let allowed = (mode == .always) || config.schedule.allows(now)
         if allowed != windowActive {
@@ -235,6 +246,7 @@ final class Engine {
 
     var status: Status {
         Status(
+            batteryStopped: batteryStopped,
             running: running,
             windowActive: windowActive,
             jiggles: jiggles,
