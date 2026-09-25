@@ -23,6 +23,7 @@ struct Config: Codable {
     var scrollMode: String
     var dimWhileActive: Bool
     var dimBrightness: Double
+    var turnOffKeyboardLight: Bool
     var batteryLimitEnabled: Bool
     var batteryLimitPercent: Int
     var notificationsEnabled: Bool
@@ -47,6 +48,7 @@ struct Config: Codable {
         scrollMode: "none",
         dimWhileActive: false,
         dimBrightness: 0.35,
+        turnOffKeyboardLight: false,
         batteryLimitEnabled: false,
         batteryLimitPercent: 20,
         notificationsEnabled: true,
@@ -102,6 +104,7 @@ extension Config {
         scrollMode = try container.decodeIfPresent(String.self, forKey: .scrollMode) ?? fallback.scrollMode
         dimWhileActive = try container.decodeIfPresent(Bool.self, forKey: .dimWhileActive) ?? fallback.dimWhileActive
         dimBrightness = try container.decodeIfPresent(Double.self, forKey: .dimBrightness) ?? fallback.dimBrightness
+        turnOffKeyboardLight = try container.decodeIfPresent(Bool.self, forKey: .turnOffKeyboardLight) ?? fallback.turnOffKeyboardLight
         batteryLimitEnabled = try container.decodeIfPresent(Bool.self, forKey: .batteryLimitEnabled) ?? fallback.batteryLimitEnabled
         batteryLimitPercent = try container.decodeIfPresent(Int.self, forKey: .batteryLimitPercent) ?? fallback.batteryLimitPercent
         notificationsEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationsEnabled) ?? fallback.notificationsEnabled

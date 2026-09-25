@@ -17,6 +17,8 @@ final class Engine {
         var displayAssertion: Bool = false
         var dimmed: Bool = false
         var brightness: Double?
+        var keyboardLightOff: Bool = false
+        var keyboardBrightness: Double?
         var waitingForApp: Bool = false
         var outOfSchedule: Bool = false
         var deadline: Date?
@@ -27,6 +29,7 @@ final class Engine {
     private(set) var config: Config
     private let power = PowerAssertions()
     var brightness: Brightness = .system
+    var keyboardLight: KeyboardLight = .system
     var readAppActivity: () -> AppActivity = AppActivity.current
     private var waitingForApp = false
     var readBattery: () -> BatteryState? = BatteryState.current
@@ -52,6 +55,8 @@ final class Engine {
     private var warnedAboutAccessibility = false
     private var restoreBrightness: Double?
     private var appliedBrightness: Double?
+    private var restoreKeyboardLight: Double?
+    private var appliedKeyboardLight: Double?
 
     init(config: Config) {
         self.config = config
@@ -78,6 +83,7 @@ final class Engine {
         power.stopDisplayAssertion()
         windowActive = false
         syncBrightness()
+        syncKeyboardLight()
         Log.info("engine: OFF (\(reason))")
         onStatusChange?()
     }
@@ -124,6 +130,7 @@ final class Engine {
         }
         if !running { power.stopDisplayAssertion() }
         syncBrightness()
+        syncKeyboardLight()
         Log.info("engine: config applied (interval \(Int(config.intervalSeconds[0]))-\(Int(config.intervalSeconds[1]))s, pattern \(config.motionPattern))")
         onStatusChange?()
     }
@@ -179,6 +186,7 @@ final class Engine {
                 power.stopDisplayAssertion()
             }
             syncBrightness()
+            syncKeyboardLight()
             onStatusChange?()
         }
 
@@ -246,6 +254,36 @@ final class Engine {
         Log.info(String(format: "display: brightness restored to %.0f%%", original * 100))
     }
 
+    private func syncKeyboardLight() {
+        guard config.turnOffKeyboardLight, running, windowActive else {
+            releaseKeyboardLight()
+            return
+        }
+        if restoreKeyboardLight == nil { restoreKeyboardLight = keyboardLight.current() }
+        if appliedKeyboardLight != nil { return }
+        guard keyboardLight.set(0) else {
+            appliedKeyboardLight = nil
+            restoreKeyboardLight = nil
+            Log.error("keyboard: the backlight of this keyboard cannot be turned off")
+            return
+        }
+        appliedKeyboardLight = 0
+        Log.info("keyboard: backlight off while the engine is active")
+    }
+
+    private func releaseKeyboardLight() {
+        guard let original = restoreKeyboardLight else { return }
+        let applied = appliedKeyboardLight
+        restoreKeyboardLight = nil
+        appliedKeyboardLight = nil
+        if let applied, let current = keyboardLight.current(), abs(current - applied) > 0.02 {
+            Log.info("keyboard: backlight left where it was set by hand")
+            return
+        }
+        guard keyboardLight.set(original) else { return }
+        Log.info(String(format: "keyboard: backlight restored to %.0f%%", original * 100))
+    }
+
     private func postExtraActivity() {
         if config.clickMode != "none", clickMouse(config.clickMode, stateID: eventSource) {
             Log.info("activity: click \(config.clickMode) at the current pointer position")
@@ -278,6 +316,8 @@ final class Engine {
             displayAssertion: power.hasDisplayAssertion,
             dimmed: appliedBrightness != nil,
             brightness: brightness.current(),
+            keyboardLightOff: appliedKeyboardLight != nil,
+            keyboardBrightness: keyboardLight.current(),
             waitingForApp: running && waitingForApp,
             outOfSchedule: running && mode == .schedule && !config.schedule.allows(Date()),
             deadline: deadline,
@@ -309,6 +349,7 @@ final class Engine {
             "display=\(status.displayAssertion ? "kept-awake" : "normal")",
             "brightness=\(status.brightness.map { String(format: "%.2f", $0) } ?? "unknown")",
             "dim=\(status.dimmed ? String(format: "%.2f", config.dimBrightness) : "off")",
+            "keyboard=\(status.keyboardLightOff ? "off" : "normal")",
             "last=\(lastText)",
             "timer=\(deadlineText)",
             "accessibility=\(status.accessibilityTrusted ? "ok" : "missing")",

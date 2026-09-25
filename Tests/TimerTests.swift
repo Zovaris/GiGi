@@ -5,6 +5,7 @@ struct TimerTests {
     static func main() {
         BatteryTests.run()
         AppConditionTests.run()
+        KeyboardLightTests.run()
         NoticeTests.run()
         MotionTests.run()
         UpdateTests.run()

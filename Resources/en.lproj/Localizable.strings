@@ -145,6 +145,16 @@
 
 "This display does not allow brightness control" = "This display does not allow brightness control";
 
+"Turn off the keyboard light" = "Turn off the keyboard light";
+
+"Normal keyboard light" = "Normal keyboard light";
+
+"Keyboard light off while GiGi is active" = "Keyboard light off while GiGi is active";
+
+"This Mac does not allow keyboard light control" = "This Mac does not allow keyboard light control";
+
+"keyboard light off" = "keyboard light off";
+
 "Runs until you stop it" = "Runs until you stop it";
 
 "Battery limit" = "Battery limit";

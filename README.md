@@ -48,8 +48,9 @@ xattr -dr com.apple.quarantine GiGi.app
 ## Use
 
 Click the menu bar icon to open the control panel. Start GiGi, then choose a timer, schedule, or
-**Always** mode. The panel also controls cursor movement, display wakefulness, dimming, battery
-limits, notifications, updates, the global shortcut, and optional click or scroll events.
+**Always** mode. The panel also controls cursor movement, display wakefulness, dimming, the keyboard
+backlight, battery limits, notifications, updates, the global shortcut, and optional click or
+scroll events.
 
 The CLI can control a running app:
 
@@ -89,6 +90,7 @@ The default configuration file is `~/.config/gigi/config.json`. A starter file i
   "preventDisplaySleep": true,
   "dimWhileActive": false,
   "dimBrightness": 0.35,
+  "turnOffKeyboardLight": false,
   "batteryLimitEnabled": false,
   "batteryLimitPercent": 20,
   "hotkey": "ctrl+cmd+j",
@@ -123,7 +125,9 @@ make icon        # redraw the app icon
 The LaunchAgent logs to `~/Library/Logs/GiGi/`; the app log is `~/Library/Logs/GiGi/app.log`.
 Synthetic cursor events require Accessibility and may be blocked on a locked Mac or by MDM.
 Click and scroll modes act wherever the pointer is. Dimming uses a private macOS framework and
-may not work with external displays or after a macOS update.
+may not work with external displays or after a macOS update. Turning off the keyboard light does
+too, and it only applies to Macs with a backlit keyboard: the panel disables the switch when there
+is no keyboard to control. `gigi probe` reports whether both are controllable on this Mac.
 
 ## License
 

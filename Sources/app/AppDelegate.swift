@@ -445,6 +445,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if status.dimmed {
             details.append(String(format: L("dimmed %d%%"), Int((engine.config.dimBrightness * 100).rounded())))
         }
+        if status.keyboardLightOff {
+            details.append(L("keyboard light off"))
+        }
         if let idle = status.lastIdle {
             details.append(String(format: L("idle %.0fs"), idle))
         }
@@ -547,6 +550,7 @@ private extension AppDelegate {
         panel.movementChanged = { [weak self] in self?.applyPanelMovement() }
         panel.dimPreview = { [weak self] in self?.previewPanelDim() }
         panel.dimChanged = { [weak self] in self?.applyPanelDim() }
+        panel.keyboardLightChanged = { [weak self] in self?.applyPanelKeyboardLight() }
         panel.notificationsChanged = { [weak self] in self?.applyPanelNotifications() }
         panel.checkForUpdatesChanged = { [weak self] in self?.applyPanelUpdatePref() }
         panel.checkForUpdatesNow = { [weak self] in self?.checkForUpdates(manual: true) }
@@ -582,6 +586,7 @@ private extension AppDelegate {
         panel.scrollMode = engine.config.scrollMode
         panel.dimWhileActive = engine.config.dimWhileActive
         panel.dimBrightness = engine.config.dimBrightness
+        panel.turnOffKeyboardLight = engine.config.turnOffKeyboardLight
         panel.appCondition = engine.config.appCondition
         panel.notificationsEnabled = engine.config.notificationsEnabled
         panel.checkForUpdates = engine.config.checkForUpdates
@@ -855,6 +860,15 @@ private extension AppDelegate {
 
     private func applyPanelDim() {
         previewPanelDim()
+        panel.error = saveConfig(engine.config, path: AppDelegate.configPathFromArguments())
+            ? nil : L("Could not write the configuration file")
+        refresh()
+    }
+
+    private func applyPanelKeyboardLight() {
+        var config = engine.config
+        config.turnOffKeyboardLight = panel.turnOffKeyboardLight
+        engine.apply(config: config)
         panel.error = saveConfig(engine.config, path: AppDelegate.configPathFromArguments())
             ? nil : L("Could not write the configuration file")
         refresh()

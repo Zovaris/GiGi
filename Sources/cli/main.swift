@@ -32,6 +32,8 @@ func usage() {
       --scroll MODE           extra scroll per move: none|ping|down|up
       --dim LEVEL             dim the display to LEVEL while active (0-1, or 0-100)
       --no-dim                keep the display at full brightness
+      --keyboard-light-off    turn the keyboard backlight off while active
+      --no-keyboard-light     keep the keyboard backlight on
       --until HH:MM           stop at that time (today, or tomorrow if already past)
       --duration MIN          stop after N minutes
       --no-assert             do not create the display assertion
@@ -57,6 +59,8 @@ struct Options {
     var scroll: String?
     var dim: Double?
     var noDim = false
+    var keyboardLightOff = false
+    var noKeyboardLight = false
     var until: String?
     var durationMinutes: Double?
     var noAssert = false
@@ -108,6 +112,10 @@ func parseOptions(_ args: [String]) -> Options {
             options.dim = nextValue("--dim").flatMap(Double.init)
         case "--no-dim":
             options.noDim = true
+        case "--keyboard-light-off":
+            options.keyboardLightOff = true
+        case "--no-keyboard-light":
+            options.noKeyboardLight = true
         case "--until":
             options.until = nextValue("--until")
         case "--duration":
@@ -167,6 +175,8 @@ func makeEngine(_ options: Options) -> Engine {
         config.dimBrightness = value > 1 ? value / 100 : value
     }
     if options.noDim { config.dimWhileActive = false }
+    if options.keyboardLightOff { config.turnOffKeyboardLight = true }
+    if options.noKeyboardLight { config.turnOffKeyboardLight = false }
     if options.noAssert { config.preventDisplaySleep = false }
     let engine = Engine(config: config)
     if options.ignoreSchedule { engine.mode = .always }
@@ -184,6 +194,7 @@ func runProbe(_ options: Options) {
     idle (HID):       \(String(format: "%.1f", userIdleSeconds())) s (CGEventSource .hidSystemState)
     idle (kernel):    \(hidIdleSeconds().map { String(format: "%.1f s (ioreg HIDIdleTime)", $0) } ?? "n/a")
     brightness:       \(Brightness.system.current().map { String(format: "%.2f (controllable)", $0) } ?? "not controllable on this display")
+    keyboard light:   \(KeyboardLight.system.current().map { String(format: "%.2f (controllable)", $0) } ?? "not controllable on this keyboard")
     menu bar app:     \(appStatus.map { "running -> \($0)" } ?? "not running")
     """)
 
@@ -266,6 +277,7 @@ func runLoop(_ options: Options) {
              + "radius \(Int(config.motionRadiusPixels))px, idle>\(Int(config.idleThresholdSeconds))s, "
              + "clicks \(config.clickMode), scroll \(config.scrollMode), "
              + "dim \(config.dimWhileActive ? "\(Int(config.dimBrightness * 100))%" : "off"), "
+             + "keyboard light \(config.turnOffKeyboardLight ? "off" : "on"), "
              + "schedule \(engine.mode == .always ? "ignored" : (config.schedule.enabled ? "ON" : "OFF"))")
     engine.setDeadline(deadline)
     engine.start(reason: "CLI run")

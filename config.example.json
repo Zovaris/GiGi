@@ -10,6 +10,7 @@
   "scrollMode": "none",
   "dimWhileActive": false,
   "dimBrightness": 0.35,
+  "turnOffKeyboardLight": false,
   "batteryLimitEnabled": false,
   "batteryLimitPercent": 20,
   "notificationsEnabled": true,

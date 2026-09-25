@@ -65,6 +65,7 @@ final class PanelModel: ObservableObject {
     @Published var scrollMode = "none"
     @Published var dimWhileActive = false
     @Published var dimBrightness: Double = 0.35
+    @Published var turnOffKeyboardLight = false
     @Published var batteryLimitEnabled = false
     @Published var batteryLimitPercent = 20
     var batteryChanged: () -> Void = {}
@@ -94,6 +95,7 @@ final class PanelModel: ObservableObject {
     @Published var error: String?
 
     var brightnessSupported: Bool { status.brightness != nil }
+    var keyboardLightSupported: Bool { status.keyboardBrightness != nil }
 
     var toggle: () -> Void = {}
     var screen: () -> Void = {}
@@ -102,6 +104,7 @@ final class PanelModel: ObservableObject {
     var movementChanged: () -> Void = {}
     var dimPreview: () -> Void = {}
     var dimChanged: () -> Void = {}
+    var keyboardLightChanged: () -> Void = {}
     var scheduleChanged: () -> Void = {}
     var recordHotkey: () -> Void = {}
     var accessibility: () -> Void = {}
@@ -530,6 +533,34 @@ struct PanelView: View {
         return String(format: L("Dimmed to %d%% while GiGi is active"), Int((model.dimBrightness * 100).rounded()))
     }
 
+    private var keyboardSetting: some View {
+        HStack(spacing: 10) {
+            Image(systemName: model.turnOffKeyboardLight ? "keyboard.badge.ellipsis" : "keyboard")
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L("Turn off the keyboard light")).font(.subheadline.weight(.medium))
+                Text(keyboardSummary).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Toggle("", isOn: Binding(get: { model.turnOffKeyboardLight }, set: { value in
+                model.turnOffKeyboardLight = value
+                model.keyboardLightChanged()
+            }))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .accessibilityLabel(L("Turn off the keyboard light"))
+            .disabled(!model.keyboardLightSupported)
+            .pointerCursor()
+        }
+        .controlSize(.small)
+    }
+
+    private var keyboardSummary: String {
+        if !model.keyboardLightSupported { return L("This Mac does not allow keyboard light control") }
+        guard model.turnOffKeyboardLight else { return L("Normal keyboard light") }
+        return L("Keyboard light off while GiGi is active")
+    }
+
     private var notificationsSetting: some View {
         HStack(spacing: 10) {
             Image(systemName: model.notificationsEnabled ? "bell.fill" : "bell.slash")
@@ -852,6 +883,7 @@ struct PanelView: View {
             }
             displaySetting
             dimSetting
+            keyboardSetting
             Divider()
             notificationsSetting
             Divider()

@@ -145,6 +145,16 @@
 
 "This display does not allow brightness control" = "Esta pantalla no permite controlar el brillo";
 
+"Turn off the keyboard light" = "Apagar la luz del teclado";
+
+"Normal keyboard light" = "Luz del teclado normal";
+
+"Keyboard light off while GiGi is active" = "Luz del teclado apagada mientras GiGi está activo";
+
+"This Mac does not allow keyboard light control" = "Esta Mac no permite controlar la luz del teclado";
+
+"keyboard light off" = "luz del teclado apagada";
+
 "Runs until you stop it" = "Activo hasta que lo detengas";
 
 "Battery limit" = "Límite de batería";
