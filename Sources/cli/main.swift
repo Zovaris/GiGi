@@ -181,6 +181,7 @@ func makeEngine(_ options: Options) -> Engine {
     let engine = Engine(config: config)
     if options.ignoreSchedule { engine.mode = .always }
     engine.eventSource = options.source
+    engine.overrides = OverrideStore(configPath: options.configPath)
     return engine
 }
 
@@ -279,6 +280,7 @@ func runLoop(_ options: Options) {
              + "dim \(config.dimWhileActive ? "\(Int(config.dimBrightness * 100))%" : "off"), "
              + "keyboard light \(config.turnOffKeyboardLight ? "off" : "on"), "
              + "schedule \(engine.mode == .always ? "ignored" : (config.schedule.enabled ? "ON" : "OFF"))")
+    engine.recoverOverrides()
     engine.setDeadline(deadline)
     engine.start(reason: "CLI run")
 

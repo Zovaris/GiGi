@@ -30,6 +30,7 @@ final class Engine {
     private let power = PowerAssertions()
     var brightness: Brightness = .system
     var keyboardLight: KeyboardLight = .system
+    var overrides: OverrideStore = .disabled
     var readAppActivity: () -> AppActivity = AppActivity.current
     var readUptime: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     private var waitingForApp = false
@@ -243,6 +244,7 @@ final class Engine {
             return
         }
         appliedBrightness = target
+        recordOverrides()
         Log.info(String(format: "display: brightness set to %.0f%% while the engine is active", target * 100))
     }
 
@@ -251,6 +253,7 @@ final class Engine {
         let applied = appliedBrightness
         restoreBrightness = nil
         appliedBrightness = nil
+        recordOverrides()
         if let applied, let current = brightness.current(), abs(current - applied) > 0.02 {
             Log.info("display: brightness left where it was set by hand")
             return
@@ -269,6 +272,37 @@ final class Engine {
         guard now.timeIntervalSince(previous) - (uptime - previousUptime) > Self.wakeGap else { return }
         Log.info("system: woke from sleep, re-applying the display and the keyboard light")
         reassert()
+    }
+
+    func recoverOverrides() {
+        guard let saved = overrides.load(), !saved.isEmpty else { return }
+        if let applied = saved.displayApplied, let original = saved.displayOriginal,
+           let current = brightness.current(), abs(current - applied) < 0.02 {
+            if brightness.set(original) {
+                Log.info(String(format: "display: repaired the brightness left by an unclean exit (%.0f%%)",
+                                original * 100))
+            }
+        }
+        if let applied = saved.keyboardApplied, let original = saved.keyboardOriginal,
+           let current = keyboardLight.current(), abs(current - applied) < 0.02 {
+            if keyboardLight.set(original) {
+                Log.info(String(format: "keyboard: repaired the backlight left by an unclean exit (%.0f%%)",
+                                original * 100))
+            }
+        }
+        overrides.clear()
+    }
+
+    private func recordOverrides() {
+        let snapshot = Overrides(displayApplied: appliedBrightness,
+                                 displayOriginal: restoreBrightness,
+                                 keyboardApplied: appliedKeyboardLight,
+                                 keyboardOriginal: restoreKeyboardLight)
+        if snapshot.isEmpty {
+            overrides.clear()
+        } else {
+            overrides.save(snapshot)
+        }
     }
 
     func reassert() {
@@ -292,6 +326,7 @@ final class Engine {
             return
         }
         appliedKeyboardLight = 0
+        recordOverrides()
         Log.info("keyboard: backlight off while the engine is active")
     }
 
@@ -300,6 +335,7 @@ final class Engine {
         let applied = appliedKeyboardLight
         restoreKeyboardLight = nil
         appliedKeyboardLight = nil
+        recordOverrides()
         if let applied, let current = keyboardLight.current(), abs(current - applied) > 0.02 {
             Log.info("keyboard: backlight left where it was set by hand")
             return

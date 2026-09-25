@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         engine = Engine(config: loadConfig(path: configPath))
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
+        engine.overrides = OverrideStore(configPath: configPath)
         NSApp.setActivationPolicy(.accessory)
         if let button = statusItem.button {
             statusBadge.translatesAutoresizingMaskIntoConstraints = false
@@ -91,6 +92,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             defaults.set(false, forKey: "running")
             defaults.removeObject(forKey: "deadline")
         }
+        engine.recoverOverrides()
         if defaults.object(forKey: "running") == nil || defaults.bool(forKey: "running") {
             engine.start(reason: "app launch")
             if let savedDeadline, savedDeadline > Date() { engine.setDeadline(savedDeadline) }
