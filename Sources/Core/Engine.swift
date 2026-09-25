@@ -31,6 +31,7 @@ final class Engine {
     var brightness: Brightness = .system
     var keyboardLight: KeyboardLight = .system
     var readAppActivity: () -> AppActivity = AppActivity.current
+    var readUptime: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     private var waitingForApp = false
     var readBattery: () -> BatteryState? = BatteryState.current
     private var batteryStopped = false
@@ -57,6 +58,9 @@ final class Engine {
     private var appliedBrightness: Double?
     private var restoreKeyboardLight: Double?
     private var appliedKeyboardLight: Double?
+    private var lastTick: Date?
+    private var lastUptime: TimeInterval?
+    private static let wakeGap: TimeInterval = 5
 
     init(config: Config) {
         self.config = config
@@ -154,6 +158,7 @@ final class Engine {
 
     @discardableResult
     func tick(now: Date = Date()) -> Bool {
+        noteWakeIfNeeded(now: now)
         if let deadline, now >= deadline {
             self.deadline = nil
             stop(reason: "timer expired")
@@ -252,6 +257,25 @@ final class Engine {
         }
         guard brightness.set(original) else { return }
         Log.info(String(format: "display: brightness restored to %.0f%%", original * 100))
+    }
+
+    private func noteWakeIfNeeded(now: Date) {
+        let uptime = readUptime()
+        defer {
+            lastTick = now
+            lastUptime = uptime
+        }
+        guard let previous = lastTick, let previousUptime = lastUptime else { return }
+        guard now.timeIntervalSince(previous) - (uptime - previousUptime) > Self.wakeGap else { return }
+        Log.info("system: woke from sleep, re-applying the display and the keyboard light")
+        reassert()
+    }
+
+    func reassert() {
+        appliedBrightness = nil
+        appliedKeyboardLight = nil
+        syncBrightness()
+        syncKeyboardLight()
     }
 
     private func syncKeyboardLight() {

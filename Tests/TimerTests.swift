@@ -6,6 +6,7 @@ struct TimerTests {
         BatteryTests.run()
         AppConditionTests.run()
         KeyboardLightTests.run()
+        WakeTests.run()
         NoticeTests.run()
         MotionTests.run()
         UpdateTests.run()

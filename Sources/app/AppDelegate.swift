@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let popover = NSPopover()
     private var legacyMenu: NSMenu?
     private var recordingMonitor: Any?
+    private var lastDisplayChange = Date.distantPast
 
     private var statusTitleItem: NSMenuItem!
     private var statusDetailItem: NSMenuItem!
@@ -102,6 +103,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         scheduleUpdateCheck()
+        CGDisplayRegisterReconfigurationCallback({ _, flags, context in
+            guard let context, !flags.contains(.beginConfigurationFlag) else { return }
+            let changes: CGDisplayChangeSummaryFlags = [.setMainFlag, .addFlag, .removeFlag, .setModeFlag]
+            guard !flags.intersection(changes).isEmpty else { return }
+            Unmanaged<AppDelegate>.fromOpaque(context).takeUnretainedValue().displayConfigurationChanged()
+        }, Unmanaged.passUnretained(self).toOpaque())
 
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self else { return }
@@ -238,6 +245,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defaults.set(engine.mode.rawValue, forKey: "mode")
         Log.info("menu: mode \(engine.mode.rawValue)")
         refresh()
+    }
+
+    private func displayConfigurationChanged() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, Date().timeIntervalSince(self.lastDisplayChange) > 0.5 else { return }
+            self.lastDisplayChange = Date()
+            Log.info("display: configuration changed, re-applying the display and the keyboard light")
+            self.engine.reassert()
+            self.refresh()
+        }
     }
 
     @objc private func toggleScreenAssertion() {
