@@ -5,7 +5,7 @@ struct SelectedApp: Codable, Equatable, Identifiable {
     let name: String
 }
 
-struct AppCondition: Codable {
+struct AppCondition: Codable, Equatable {
     var enabled = false
     var mode = "running"
     var apps: [SelectedApp] = []

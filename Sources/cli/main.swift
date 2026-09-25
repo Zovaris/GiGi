@@ -16,6 +16,9 @@ func usage() {
       gigi until HH:MM | duration MIN | reload | menu | quit-app
       gigi panel [movement|settings]   open the panel, optionally on a drawer
 
+    DIAGNOSTICS:
+      gigi doctor             check the config, the permissions and the private APIs
+
     UPDATES:
       gigi update             compare this build with the latest GitHub release
       gigi version            print the version of this build
@@ -303,6 +306,121 @@ func forwardToApp(_ request: String, hint: String) {
     }
 }
 
+func machineModel() -> String? {
+    var size = 0
+    guard sysctlbyname("hw.model", nil, &size, nil, 0) == 0, size > 0 else { return nil }
+    var buffer = [CChar](repeating: 0, count: size)
+    guard sysctlbyname("hw.model", &buffer, &size, nil, 0) == 0 else { return nil }
+    return String(cString: buffer)
+}
+
+func runDoctor(_ options: Options) {
+    var failures = 0
+    var warnings = 0
+
+    func report(_ label: String, _ status: String, _ detail: String) {
+        print("  " + label.padding(toLength: 15, withPad: " ", startingAt: 0) + " " + status + "  " + detail)
+    }
+
+    func pass(_ label: String, _ detail: String) {
+        report(label, "ok  ", detail)
+    }
+
+    func warning(_ label: String, _ detail: String) {
+        warnings += 1
+        report(label, "warn", detail)
+    }
+
+    func failure(_ label: String, _ detail: String) {
+        failures += 1
+        report(label, "FAIL", detail)
+    }
+
+    print("GiGi doctor · \(BuildVersion.current) · \(CommandLine.arguments[0])")
+    print("  " + "macos".padding(toLength: 15, withPad: " ", startingAt: 0)
+          + " ok    \(ProcessInfo.processInfo.operatingSystemVersionString.replacingOccurrences(of: "Version ", with: ""))"
+          + (machineModel().map { " · \($0)" } ?? ""))
+    print("")
+
+    var config = Config.default
+    let configPath = options.configPath
+    let shownPath = (configURL(path: configPath).path as NSString).abbreviatingWithTildeInPath
+    switch inspectConfig(path: configPath) {
+    case .missing:
+        pass("config", "\(shownPath) is missing, the defaults are in use")
+    case .invalid(let reason):
+        failure("config", "\(shownPath) cannot be read (\(reason)), the defaults are in use")
+    case .loaded(let loaded):
+        config = loaded
+        pass("config", "\(shownPath) loaded")
+    }
+    for advice in configWarnings(config) {
+        warning("config", advice)
+    }
+
+    if let saved = OverrideStore(configPath: configPath).load(), !saved.isEmpty {
+        warning("record", "an unclean exit left values behind; the next run puts them back")
+    } else {
+        pass("record", "nothing left behind")
+    }
+
+    if accessibilityTrusted() {
+        pass("accessibility", "granted")
+    } else {
+        failure("accessibility", "missing: the cursor will not move")
+        print("                  System Settings > Privacy & Security > Accessibility")
+    }
+
+    if let level = Brightness.system.current() {
+        pass("display", String(format: "brightness %.2f, controllable", level))
+    } else {
+        warning("display", "the brightness is not controllable here, so dimming does nothing")
+    }
+
+    if let level = KeyboardLight.system.current() {
+        pass("keyboard light", String(format: "%.2f, controllable", level))
+    } else if config.turnOffKeyboardLight {
+        warning("keyboard light", "not controllable on this keyboard, so the setting does nothing")
+    } else {
+        warning("keyboard light", "not controllable on this keyboard")
+    }
+
+    let agentPath = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/LaunchAgents/\(ControlIPC.agentLabel).plist")
+    let agentInstalled = FileManager.default.fileExists(atPath: agentPath.path)
+    let appReply = ControlIPC.send("status")
+    let appText = appReply == nil ? "the menu bar app is not running" : "the menu bar app is running"
+    let agentText = agentInstalled ? "a launch agent is installed" : "no launch agent is installed"
+    if appReply != nil && agentInstalled {
+        failure("engines", "\(appText) and \(agentText): keep only one of them")
+    } else {
+        pass("engines", "\(appText), \(agentText)")
+    }
+    if let appReply {
+        print("                  \(appReply)")
+    }
+
+    if let next = config.schedule.nextTransition(after: Date()) {
+        pass("schedule", "next transition \(logTimestampFormatter.string(from: next))")
+    } else if config.schedule.enabled {
+        pass("schedule", "on, with nothing to limit")
+    } else {
+        pass("schedule", "off, so GiGi ignores the clock")
+    }
+
+    pass("hotkey", config.hotkey == Hotkey.disabledName ? "disabled" : config.hotkey)
+    pass("notifications", config.notificationsEnabled
+         ? "on (the permission itself is only visible in the app)" : "off")
+
+    print("")
+    if failures == 0 && warnings == 0 {
+        print("no problems found")
+    } else {
+        print("\(failures) failure(s), \(warnings) warning(s)")
+    }
+    exit(failures > 0 ? 1 : 0)
+}
+
 func runUpdateCheck() {
     let current = BuildVersion.current
     print("GiGi \(current)")
@@ -340,6 +458,9 @@ case "help":
 
 case "probe":
     runProbe(options)
+
+case "doctor":
+    runDoctor(options)
 
 case "once":
     runOnce(options)

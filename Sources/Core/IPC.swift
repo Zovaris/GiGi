@@ -1,6 +1,7 @@
 import Foundation
 
 enum ControlIPC {
+    static let agentLabel = "com.justcallmebryan.gigi"
     static let portName = "com.justcallmebryan.gigi.control"
     static let messageID: Int32 = 1
 

@@ -70,6 +70,7 @@ Run the engine directly when the app is not open:
 ```bash
 ./bin/gigi run                 # run until stopped
 ./bin/gigi once                # move once
+./bin/gigi doctor              # check the config, the permissions and the private APIs
 ./bin/gigi probe               # show diagnostics
 ./bin/gigi update              # check the latest release
 ./bin/gigi help
@@ -126,8 +127,8 @@ The LaunchAgent logs to `~/Library/Logs/GiGi/`; the app log is `~/Library/Logs/G
 Synthetic cursor events require Accessibility and may be blocked on a locked Mac or by MDM.
 Click and scroll modes act wherever the pointer is. Dimming uses a private macOS framework and
 may not work with external displays or after a macOS update. Turning off the keyboard light does
-too, and it only applies to Macs with a backlit keyboard: the panel disables the switch when there
-is no keyboard to control. `gigi probe` reports whether both are controllable on this Mac.
+too, and it only applies to Macs with a backlit keyboard: the panel disables the switch whenthere is no keyboard to control. `gigi doctor` prints what this Mac can control and what needs
+attention; `gigi probe` prints the idle and permission numbers.
 
 ## License
 

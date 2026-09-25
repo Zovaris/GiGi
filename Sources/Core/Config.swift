@@ -11,7 +11,7 @@ struct Schedule: Codable, Equatable {
     var windows: [ScheduleWindow]
 }
 
-struct Config: Codable {
+struct Config: Codable, Equatable {
     var intervalSeconds: [Double]
     var idleThresholdSeconds: Double
     var jiggleDistancePixels: Double
@@ -120,8 +120,46 @@ func defaultConfigURL() -> URL {
         .appendingPathComponent(".config/gigi/config.json")
 }
 
+func configURL(path: String?) -> URL {
+    guard let path else { return defaultConfigURL() }
+    return URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+}
+
+enum ConfigInspection: Equatable {
+    case missing
+    case invalid(String)
+    case loaded(Config)
+}
+
+func inspectConfig(path: String? = nil) -> ConfigInspection {
+    let url = configURL(path: path)
+    guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
+    do {
+        let data = try Data(contentsOf: url)
+        return .loaded(try JSONDecoder().decode(Config.self, from: data).sanitized())
+    } catch {
+        return .invalid(error.localizedDescription)
+    }
+}
+
+func configWarnings(_ config: Config) -> [String] {
+    var warnings: [String] = []
+    if config.dimWhileActive && !config.preventDisplaySleep {
+        warnings.append("dimming only applies while GiGi keeps the display awake")
+    }
+    if config.schedule.enabled && config.schedule.days.isEmpty {
+        warnings.append("the schedule is on but no weekday is selected, so GiGi never activates")
+    } else if config.schedule.enabled && config.schedule.windows.isEmpty {
+        warnings.append("the schedule is on but has no window, so it limits nothing")
+    }
+    if config.appCondition.enabled && config.appCondition.apps.isEmpty {
+        warnings.append("the app condition is on but no app is selected, so it allows everything")
+    }
+    return warnings
+}
+
 func saveConfig(_ config: Config, path: String? = nil) -> Bool {
-    let url = path.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) } ?? defaultConfigURL()
+    let url = configURL(path: path)
     do {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                 withIntermediateDirectories: true)
@@ -137,7 +175,7 @@ func saveConfig(_ config: Config, path: String? = nil) -> Bool {
 }
 
 func loadConfig(path: String?) -> Config {
-    let url = path.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) } ?? defaultConfigURL()
+    let url = configURL(path: path)
     guard FileManager.default.fileExists(atPath: url.path) else {
         Log.info("config: missing \(url.path), using defaults")
         return .default

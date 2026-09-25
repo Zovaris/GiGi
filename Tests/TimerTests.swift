@@ -8,6 +8,7 @@ struct TimerTests {
         KeyboardLightTests.run()
         WakeTests.run()
         RestoreTests.run()
+        DoctorTests.run()
         NoticeTests.run()
         MotionTests.run()
         UpdateTests.run()
