@@ -19,8 +19,6 @@ if [ ! -f "$CONFIG" ]; then
   echo "created $CONFIG (edit it, then use 'Reload config' or 'gigi reload')"
 fi
 
-# Any other GiGi agent left behind by an earlier install would keep running its own engine,
-# so clear them out before this one goes in.
 for stale in "$HOME/Library/LaunchAgents"/*.gigi.plist; do
   [ -e "$stale" ] || continue
   [ "$(basename "$stale")" = "$LABEL.plist" ] && continue
