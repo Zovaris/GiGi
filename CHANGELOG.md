@@ -3,6 +3,18 @@
 Newest first. Versions match the `vX.Y.Z` tags and the app's `Info.plist`; dates are ISO 8601.
 Cut a release with `make version`, which writes the section for you.
 
+## 0.4.1 - 2026-09-24
+
+**Added**
+
+- Add gigi doctor for the permissions and the private APIs
+- Turn the keyboard backlight off while GiGi is active
+
+**Fixed**
+
+- Repair the brightness and keyboard light after an unclean exit
+- Re-apply the dim and the keyboard light after the Mac wakes
+
 ## 0.4.0 - 2026-09-20
 
 **Added**
