@@ -1,20 +1,12 @@
 import SwiftUI
 
-private let panelAppIcon: NSImage = {
-    if let url = Bundle.main.url(forResource: "GiGi", withExtension: "icns"),
-       let icon = NSImage(contentsOf: url) {
-        return icon
-    }
-    return NSImage(named: NSImage.applicationIconName) ?? NSImage()
-}()
-
 private struct HeaderHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 68
+    static var defaultValue: CGFloat = 60
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 private struct FooterHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 50
+    static var defaultValue: CGFloat = 44
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
@@ -23,26 +15,34 @@ private struct ContentHeightKey: PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
+private struct DrawerHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 final class PanelModel: ObservableObject {
     @Published var status = Engine.Status()
-    @Published private var headerHeight: CGFloat = 68
-    @Published private var footerHeight: CGFloat = 50
+    @Published private var headerHeight: CGFloat = 60
+    @Published private var footerHeight: CGFloat = 44
     @Published private var contentHeight: CGFloat = 0
+    @Published private var drawerHeight: CGFloat = 0
     @Published var maxHeight: CGFloat = 520
 
     var panelHeight: CGFloat {
-        min(maxHeight, headerHeight + footerHeight + 2 + max(contentHeight, 320))
+        let body = drawer == nil ? contentHeight : drawerHeight
+        return min(maxHeight, headerHeight + footerHeight + 1 + max(body, 240))
     }
 
     private func adjust(_ value: CGFloat, _ stored: CGFloat) -> Bool {
         abs(value - stored) > 0.5
     }
 
-    func setMetrics(header: CGFloat? = nil, footer: CGFloat? = nil, content: CGFloat? = nil) {
+    func setMetrics(header: CGFloat? = nil, footer: CGFloat? = nil, content: CGFloat? = nil, drawer: CGFloat? = nil) {
         var changed = false
         if let header, adjust(header, headerHeight) { headerHeight = header; changed = true }
         if let footer, adjust(footer, footerHeight) { footerHeight = footer; changed = true }
         if let content, adjust(content, contentHeight) { contentHeight = content; changed = true }
+        if let drawer, adjust(drawer, drawerHeight) { drawerHeight = drawer; changed = true }
         if changed { heightChanged() }
     }
 
@@ -89,7 +89,9 @@ final class PanelModel: ObservableObject {
     @Published var hotkeyDisplay: String = Hotkey.default.display
     @Published var recordingHotkey = false
     @Published var intervalSummary = ""
-    @Published var drawer: String?
+    @Published var drawer: String? {
+        didSet { if drawer != oldValue { heightChanged() } }
+    }
     @Published var topToken = UUID()
     @Published var error: String?
 
@@ -118,35 +120,37 @@ struct PanelView: View {
     @ObservedObject var model: PanelModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var deadlineText: String? {
-        guard let deadline = model.status.deadline else { return nil }
-        return deadline.formatted(date: .omitted, time: .shortened)
+    private var locale: Locale {
+        model.language == "system" ? .autoupdatingCurrent : Locale(identifier: model.language)
+    }
+
+    private var expand: Animation? {
+        reduceMotion ? nil : .easeInOut(duration: 0.18)
     }
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            Divider().opacity(0.45)
             ZStack(alignment: .top) {
                 mainList
                     .offset(x: model.drawer == nil ? 0 : -360)
+                    .opacity(model.drawer == nil ? 1 : 0)
                     .allowsHitTesting(model.drawer == nil)
                     .accessibilityHidden(model.drawer != nil)
                 if let drawer = model.drawer {
                     drawerPage(drawer)
-                        .transition(.move(edge: .trailing))
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .clipped()
-            .animation(.spring(response: 0.32, dampingFraction: 0.88), value: model.drawer)
-            Divider().opacity(0.45)
+            .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.88), value: model.drawer)
+            Divider()
             footer
         }
         .frame(width: 360, height: model.panelHeight)
-        .background(.regularMaterial)
         .preferredColorScheme(model.theme == "dark" ? .dark : model.theme == "light" ? .light : nil)
-        .environment(\.locale, model.language == "system" ? .autoupdatingCurrent : Locale(identifier: model.language))
+        .environment(\.locale, locale)
         .onPreferenceChange(HeaderHeightKey.self) { height in
             DispatchQueue.main.async { model.setMetrics(header: height) }
         }
@@ -156,18 +160,17 @@ struct PanelView: View {
         .onPreferenceChange(ContentHeightKey.self) { height in
             DispatchQueue.main.async { model.setMetrics(content: height) }
         }
+        .onPreferenceChange(DrawerHeightKey.self) { height in
+            DispatchQueue.main.async { model.setMetrics(drawer: height) }
+        }
     }
 
     private var header: some View {
-        HStack(spacing: 11) {
-            Image(nsImage: panelAppIcon)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 42, height: 42)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("GiGi").font(.headline)
-                Text(statusLabel).font(.caption).foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            StateGlyph(state: StatusIcon.state(for: model.status))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(statusLabel).font(.headline)
+                Text(headerDetail).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
             Toggle("", isOn: Binding(get: { model.status.running }, set: { _ in model.toggle() }))
@@ -177,7 +180,8 @@ struct PanelView: View {
                 .pointerCursor()
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
         .background(GeometryReader { proxy in
             Color.clear.preference(key: HeaderHeightKey.self, value: proxy.size.height)
         })
@@ -193,22 +197,64 @@ struct PanelView: View {
         return model.status.running ? L("Active") : L("Inactive")
     }
 
+    private var headerDetail: String {
+        let movements = String(format: L("%d movements"), model.status.jiggles)
+        guard let deadline = model.status.deadline else { return movements }
+        let time = deadline.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(locale))
+        return String(format: L("Ends at %@"), time) + " · " + movements
+    }
+
+    private var footer: some View {
+        HStack(spacing: 10) {
+            if let idle = model.status.lastIdle {
+                Text(String(format: L("Idle %.0fs"), idle))
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(action: model.move) {
+                Label(L("Move now"), systemImage: "cursorarrow.motionlines")
+            }
+            .controlSize(.small)
+            .disabled(!model.status.accessibilityTrusted)
+            .pointerCursor(model.status.accessibilityTrusted)
+            Menu {
+                Button(L("Quit"), action: model.quit)
+            } label: {
+                Image(systemName: "ellipsis")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel(L("More"))
+            .pointerCursor()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(GeometryReader { proxy in
+            Color.clear.preference(key: FooterHeightKey.self, value: proxy.size.height)
+        })
+    }
+
     private var mainList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    scheduleCard
-                    appConditionCard
-                    drawerCard
-                    if let error = model.error {
-                        Label(error, systemImage: "exclamationmark.triangle.fill")
-                            .font(.footnote)
-                            .foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 10) {
+                    if !model.status.accessibilityTrusted { permissionSection }
+                    whenSection
+                    appConditionSection
+                    PanelSection {
+                        navigationRow(L("Movement"), symbol: "point.topleft.down.to.point.bottomright.curvepath",
+                                      detail: model.intervalSummary, page: "movement")
+                        RowDivider()
+                        navigationRow(L("Settings"), symbol: "gearshape", detail: nil, page: "settings")
                     }
-                    if !model.status.accessibilityTrusted { permissionCard }
+                    errorLabel
                 }
-                .padding(14)
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+                .padding(.bottom, 12)
                 .id("panel-top")
                 .background(GeometryReader { proxy in
                     Color.clear.preference(key: ContentHeightKey.self, value: proxy.size.height)
@@ -220,82 +266,39 @@ struct PanelView: View {
         }
     }
 
-    private var drawerCard: some View {
-        VStack(spacing: 0) {
-            drawerRow(L("Movement"), systemImage: "speedometer", detail: model.intervalSummary, page: "movement")
-            Divider().padding(.leading, 28)
-            drawerRow(L("Settings"), systemImage: "gearshape", detail: nil, page: "settings")
+    @ViewBuilder
+    private var errorLabel: some View {
+        if let error = model.error {
+            Label(error, systemImage: "exclamationmark.triangle.fill")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 10)
         }
-        .cardStyle()
     }
 
-    private func drawerRow(_ title: String, systemImage: String, detail: String?, page: String) -> some View {
-        Button {
-            model.drawer = page
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: systemImage)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.subheadline.weight(.medium))
-                    if let detail {
-                        Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.tertiary)
+    private var permissionSection: some View {
+        PanelSection {
+            SettingRow(title: L("Accessibility permission needed"), symbol: "hand.raised.fill",
+                       detail: L("GiGi needs Accessibility permission to move the cursor.")) {
+                EmptyView()
             }
-            .padding(.vertical, 9)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
-        .accessibilityValue(detail ?? "")
-        .pointerCursor()
-    }
-
-    private func drawerPage(_ kind: String) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                cardTitle(kind == "movement" ? L("Movement") : L("Settings"),
-                          systemImage: kind == "movement" ? "speedometer" : "gearshape")
-                Spacer(minLength: 8)
-                Button {
-                    model.drawer = nil
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.cancelAction)
-                .accessibilityLabel(L("Close"))
-                .pointerCursor()
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 11)
-            Divider().opacity(0.45)
-            ScrollView {
-                Group {
-                    if kind == "movement" { movementBody } else { settingsBody }
-                }
-                .padding(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            RowDetail {
+                Button(L("Open Accessibility settings"), action: model.accessibility)
+                    .pointerCursor()
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(.regularMaterial)
     }
 
-    private var timerBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                cardTitle(L("Timer"), systemImage: "timer")
-                Spacer(minLength: 8)
+    private var whenSection: some View {
+        PanelSection {
+            toggleRow(L("Schedule"), symbol: "calendar", isOn: Binding(get: { model.scheduleEnabled }, set: {
+                model.scheduleEnabled = $0
+                model.scheduleChanged()
+            }))
+            if model.scheduleEnabled { scheduleDetail }
+            RowDivider()
+            SettingRow(title: L("Timer"), symbol: "timer") {
                 Picker(L("Timer"), selection: Binding(get: { model.timerKind }, set: {
                     model.timerKind = $0
                     model.timerChanged()
@@ -304,46 +307,101 @@ struct PanelView: View {
                     Text(L("For")).tag("duration")
                     Text(L("Until")).tag("until")
                 }
-                .pickerStyle(.menu)
+                .pickerStyle(.segmented)
                 .labelsHidden()
                 .fixedSize()
                 .pointerCursor()
             }
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    if model.timerKind == "duration" {
-                        Text(L("For")).font(.subheadline)
-                        Picker(L("Minutes"), selection: Binding(get: { model.minutes }, set: {
-                            model.minutes = $0
-                            model.timerChanged()
-                        })) {
-                            ForEach(durationOptions, id: \.self) { value in
-                                Text(value, format: .number.precision(.fractionLength(0...1))).tag(value)
-                            }
+            if model.timerKind != "none" { timerDetail }
+            RowDivider()
+            toggleRow(L("Battery limit"), symbol: "battery.25percent",
+                      detail: L("Only while using battery power"),
+                      isOn: Binding(get: { model.batteryLimitEnabled }, set: {
+                          model.batteryLimitEnabled = $0
+                          model.batteryChanged()
+                      }))
+            if model.batteryLimitEnabled {
+                RowDetail {
+                    Text(L("Stop GiGi at")).foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Picker(L("Battery percentage"), selection: Binding(get: { model.batteryLimitPercent }, set: {
+                        model.batteryLimitPercent = $0
+                        model.batteryChanged()
+                    })) {
+                        ForEach(batteryChoices, id: \.self) { percent in
+                            Text("\(percent)%").tag(percent)
                         }
-                        .labelsHidden()
-                        .pickerStyle(.menu)
-                        .frame(width: 76)
-                        .pointerCursor()
-                        Text(L("minutes")).font(.subheadline).foregroundStyle(.secondary)
-                    } else if model.timerKind == "until" {
-                        Text(L("End time")).font(.subheadline)
-                        timePickers($model.until, label: L("End time"), onChange: model.timerChanged)
-                    } else {
-                        Text(L("Runs until you stop it"))
-                            .font(.subheadline).foregroundStyle(.secondary)
                     }
-                    Spacer(minLength: 0)
+                    .labelsHidden()
+                    .fixedSize()
+                    .pointerCursor()
                 }
-                .controlSize(.small)
-                .frame(height: 22)
-                Text(deadlineText.map { String(format: L("Ends at %@"), $0) } ?? " ")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .frame(height: 14)
-                    .accessibilityHidden(deadlineText == nil)
             }
-            .frame(height: 44, alignment: .topLeading)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: model.timerKind)
+        }
+        .animation(expand, value: model.scheduleEnabled)
+        .animation(expand, value: model.timerKind)
+        .animation(expand, value: model.batteryLimitEnabled)
+    }
+
+    private var scheduleDetail: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                timeField(Binding(get: { model.scheduleStart }, set: {
+                    model.scheduleStart = $0
+                    model.scheduleChanged()
+                }), label: L("From"))
+                Text("–").foregroundStyle(.secondary)
+                timeField(Binding(get: { model.scheduleEnd }, set: {
+                    model.scheduleEnd = $0
+                    model.scheduleChanged()
+                }), label: L("To"))
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 4) {
+                ForEach(weekdayNames, id: \.self) { day in
+                    dayChip(day)
+                }
+            }
+            if model.scheduleDays.isEmpty {
+                Text(L("Select at least one day")).font(.caption).foregroundStyle(.secondary)
+            }
+            if model.scheduleWindows > 1 {
+                Text(String(format: L("+%d more windows in the configuration file"), model.scheduleWindows - 1))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.leading, RowMetrics.textInset)
+        .padding(.trailing, RowMetrics.padding)
+        .padding(.bottom, 10)
+    }
+
+    private var timerDetail: some View {
+        RowDetail {
+            if model.timerKind == "duration" {
+                Picker(L("Minutes"), selection: Binding(get: { model.minutes }, set: {
+                    model.minutes = $0
+                    model.timerChanged()
+                })) {
+                    ForEach(durationOptions, id: \.self) { value in
+                        Text(durationText(value)).tag(value)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
+                .pointerCursor()
+            } else {
+                timeField(Binding(get: { model.until }, set: {
+                    model.until = $0
+                    model.timerChanged()
+                }), label: L("End time"))
+            }
+            Spacer(minLength: 8)
+            if let deadline = model.status.deadline {
+                Text(String(format: L("Ends at %@"),
+                            deadline.formatted(Date.FormatStyle(date: .omitted, time: .shortened).locale(locale))))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -352,441 +410,26 @@ struct PanelView: View {
             .union([model.minutes]).sorted()
     }
 
-    private var movementBody: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 6) {
-                Text(L("Idle delay")).font(.subheadline).frame(width: 108, alignment: .leading)
-                NumberField(value: $model.idleThreshold, range: 1...3600, commit: model.movementChanged)
-                Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: 6) {
-                Text(L("Move every")).font(.subheadline).frame(width: 108, alignment: .leading)
-                NumberField(value: $model.intervalLow, range: 1...3600, commit: model.movementChanged)
-                Text("–").foregroundStyle(.secondary)
-                NumberField(value: $model.intervalHigh, range: 1...3600, commit: model.movementChanged)
-                Text(L("seconds")).font(.caption).foregroundStyle(.secondary).fixedSize()
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: 6) {
-                Text(L("Pattern")).font(.subheadline).frame(width: 108, alignment: .leading)
-                Picker(L("Pattern"), selection: Binding(get: { model.motionPattern }, set: {
-                    model.motionPattern = $0
-                    model.movementChanged()
-                })) {
-                    ForEach(Motion.patterns, id: \.self) { pattern in
-                        Text(Motion.label(pattern)).tag(pattern)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .pointerCursor()
-                Spacer(minLength: 0)
-            }
-            if model.motionPattern != Motion.defaultPattern {
-                HStack(spacing: 6) {
-                    Text(L("Radius")).font(.subheadline).frame(width: 108, alignment: .leading)
-                    NumberField(value: $model.motionRadius, range: Motion.radiusRange, width: 60,
-                                commit: model.movementChanged)
-                    Text(L("px")).font(.caption).foregroundStyle(.secondary).fixedSize()
-                    Spacer(minLength: 0)
-                }
-            }
-            HStack(spacing: 6) {
-                Text(L("Clicks")).font(.subheadline).frame(width: 108, alignment: .leading)
-                Picker(L("Clicks"), selection: Binding(get: { model.clickMode }, set: {
-                    model.clickMode = $0
-                    model.movementChanged()
-                })) {
-                    Text(L("None")).tag("none")
-                    Text(L("Single")).tag("single")
-                    Text(L("Double")).tag("double")
-                    Text(L("Right")).tag("right")
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .pointerCursor()
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: 6) {
-                Text(L("Scroll")).font(.subheadline).frame(width: 108, alignment: .leading)
-                Picker(L("Scroll"), selection: Binding(get: { model.scrollMode }, set: {
-                    model.scrollMode = $0
-                    model.movementChanged()
-                })) {
-                    Text(L("None")).tag("none")
-                    Text(L("Ping")).tag("ping")
-                    Text(L("Down")).tag("down")
-                    Text(L("Up")).tag("up")
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .pointerCursor()
-                Spacer(minLength: 0)
-            }
-            if model.clickMode != "none" || model.scrollMode != "none" {
-                Label(L("Clicks and scrolls land wherever the pointer is"),
-                      systemImage: "exclamationmark.triangle")
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack {
-                Button(L("Apply movement"), action: model.movementChanged)
-                    .controlSize(.small)
-                    .pointerCursor()
-                Spacer(minLength: 8)
-            }
-        }
-    }
-
-    private var shortcutRow: some View {
-        HStack(spacing: 8) {
-            Label(L("Shortcut"), systemImage: "keyboard")
-            Spacer(minLength: 8)
-            if model.recordingHotkey {
-                Text(L("Press a key combination")).font(.caption).foregroundStyle(.secondary)
-                Button(L("Cancel"), action: model.recordHotkey).controlSize(.small).pointerCursor()
-            } else {
-                Text(model.hotkeyDisplay.isEmpty ? "—" : model.hotkeyDisplay)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 5))
-                Button(L("Record"), action: model.recordHotkey).controlSize(.small).pointerCursor()
-            }
-        }
-    }
-
-    private var displaySetting: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "display")
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L("Keep display awake")).font(.subheadline.weight(.medium))
-                Text(model.status.displayAssertion ? L("Screen stays on while active") : L("Normal display sleep"))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Toggle("", isOn: Binding(get: { model.preventDisplaySleep }, set: { _ in model.screen() }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .accessibilityLabel(L("Keep display awake"))
-                .pointerCursor()
-        }
-        .controlSize(.small)
-    }
-
-    private var dimSetting: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 10) {
-                Image(systemName: model.dimWhileActive ? "sun.min" : "sun.max")
-                    .foregroundStyle(.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L("Dim the display")).font(.subheadline.weight(.medium))
-                    Text(dimSummary).font(.caption).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Toggle("", isOn: Binding(get: { model.dimWhileActive }, set: { value in
-                    model.dimWhileActive = value
-                    model.dimChanged()
-                }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .accessibilityLabel(L("Dim the display"))
-                .disabled(!model.preventDisplaySleep || !model.brightnessSupported)
-                .pointerCursor()
-            }
-            HStack(spacing: 8) {
-                Image(systemName: "sun.min")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
-                Slider(value: Binding(get: { model.dimBrightness }, set: { value in
-                    model.dimBrightness = value
-                    model.dimPreview()
-                }), in: 0...1, onEditingChanged: { editing in
-                    if !editing { model.dimChanged() }
-                })
-                .controlSize(.small)
-                .disabled(!model.dimWhileActive || !model.preventDisplaySleep)
-                .accessibilityLabel(L("Brightness"))
-                .pointerCursor()
-                Image(systemName: "sun.max.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                Text(String(format: "%d%%", Int((model.dimBrightness * 100).rounded())))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .frame(width: 34, alignment: .trailing)
-            }
-            .padding(.leading, 2)
-        }
-        .controlSize(.small)
-    }
-
-    private var dimSummary: String {
-        if !model.brightnessSupported { return L("This display does not allow brightness control") }
-        if !model.preventDisplaySleep { return L("Keep the display awake to dim it") }
-        guard model.dimWhileActive else { return L("Normal brightness") }
-        return String(format: L("Dimmed to %d%% while GiGi is active"), Int((model.dimBrightness * 100).rounded()))
-    }
-
-    private var keyboardSetting: some View {
-        HStack(spacing: 10) {
-            Image(systemName: model.turnOffKeyboardLight ? "keyboard.badge.ellipsis" : "keyboard")
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L("Turn off the keyboard light")).font(.subheadline.weight(.medium))
-                Text(keyboardSummary).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Toggle("", isOn: Binding(get: { model.turnOffKeyboardLight }, set: { value in
-                model.turnOffKeyboardLight = value
-                model.keyboardLightChanged()
-            }))
-            .labelsHidden()
-            .toggleStyle(.switch)
-            .accessibilityLabel(L("Turn off the keyboard light"))
-            .disabled(!model.keyboardLightSupported)
-            .pointerCursor()
-        }
-        .controlSize(.small)
-    }
-
-    private var keyboardSummary: String {
-        if !model.keyboardLightSupported { return L("This Mac does not allow keyboard light control") }
-        guard model.turnOffKeyboardLight else { return L("Normal keyboard light") }
-        return L("Keyboard light off while GiGi is active")
-    }
-
-    private var notificationsSetting: some View {
-        HStack(spacing: 10) {
-            Image(systemName: model.notificationsEnabled ? "bell.fill" : "bell.slash")
-                .foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L("Notifications")).font(.subheadline.weight(.medium))
-                Text(notificationsSummary).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Toggle(L("Notifications"), isOn: Binding(get: { model.notificationsEnabled }, set: { value in
-                model.notificationsEnabled = value
-                model.notificationsChanged()
-            }))
-            .labelsHidden()
-            .toggleStyle(.switch)
-            .pointerCursor()
-        }
-        .controlSize(.small)
-    }
-
-    private var notificationsSummary: String {
-        guard model.notificationsEnabled else { return L("Silent") }
-        if model.notificationsDenied { return L("Blocked in System Settings") }
-        return L("Warn me when GiGi stops on its own")
-    }
-
-    private var scheduleCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            scheduleBody
-            Divider()
-            timerBody
-            Divider()
-            batteryBody
-        }
-        .cardStyle()
-    }
-
-    private var batteryBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                cardTitle(L("Battery limit"), systemImage: "battery.25percent")
-                Spacer(minLength: 8)
-                Toggle(L("Battery limit"), isOn: Binding(get: { model.batteryLimitEnabled }, set: {
-                    model.batteryLimitEnabled = $0
-                    model.batteryChanged()
-                }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .pointerCursor()
-            }
-            HStack(spacing: 8) {
-                Text(L("Stop GiGi at")).font(.subheadline)
-                Picker(L("Battery percentage"), selection: Binding(get: { model.batteryLimitPercent }, set: {
-                    model.batteryLimitPercent = $0
-                    model.batteryChanged()
-                })) {
-                    ForEach(batteryChoices, id: \.self) { percent in
-                        Text("\(percent)%").tag(percent)
-                    }
-                }
-                .labelsHidden()
-                .pickerStyle(.menu)
-                .controlSize(.small)
-                .frame(width: 68)
-                .pointerCursor()
-                Spacer(minLength: 0)
-            }
-            .disabled(!model.batteryLimitEnabled)
-            Text(L("Only while using battery power"))
-                .font(.caption).foregroundStyle(.secondary)
-        }
+    private func durationText(_ minutes: Double) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.day, .hour, .minute]
+        formatter.unitsStyle = .abbreviated
+        var calendar = Calendar.current
+        calendar.locale = locale
+        formatter.calendar = calendar
+        return formatter.string(from: minutes * 60) ?? String(format: "%.0f", minutes)
     }
 
     private var batteryChoices: [Int] {
         Set(Config.batteryLimitChoices).union([model.batteryLimitPercent]).sorted()
     }
 
-    private var appConditionCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                cardTitle(L("Only while an app…"), systemImage: "app.dashed")
-                Spacer(minLength: 8)
-                Toggle(L("Only while an app…"), isOn: Binding(get: { model.appCondition.enabled }, set: {
-                    model.appCondition.enabled = $0
-                    model.appConditionChanged()
-                }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .pointerCursor()
-            }
-            Picker(L("App condition"), selection: Binding(get: { model.appCondition.mode }, set: {
-                model.appCondition.mode = $0
-                model.appConditionChanged()
-            })) {
-                Text(L("Is running")).tag("running")
-                Text(L("Is in front")).tag("frontmost")
-            }
-            .pickerStyle(.segmented)
+    private func timeField(_ date: Binding<Date>, label: String) -> some View {
+        DatePicker(label, selection: date, displayedComponents: .hourAndMinute)
+            .datePickerStyle(.field)
             .labelsHidden()
-            .disabled(!model.appCondition.enabled)
-            ForEach(model.appCondition.apps) { app in
-                HStack(spacing: 8) {
-                    Image(nsImage: appIcon(app.id))
-                        .resizable().frame(width: 22, height: 22)
-                        .accessibilityHidden(true)
-                    Text(app.name).font(.subheadline).lineLimit(1)
-                    Spacer(minLength: 8)
-                    Button {
-                        model.appCondition.apps.removeAll { $0.id == app.id }
-                        model.appConditionChanged()
-                    } label: {
-                        Image(systemName: "minus.circle").foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(String(format: L("Remove %@"), app.name))
-                    .pointerCursor()
-                }
-            }
-            HStack(spacing: 8) {
-                Button(action: model.addApp) {
-                    Label(L("Add app"), systemImage: "plus")
-                }
-                .controlSize(.small)
-                .pointerCursor()
-                if model.appCondition.apps.isEmpty {
-                    Text(L("Choose an app to watch"))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            if !model.appCondition.apps.isEmpty {
-                Text(L("Any selected app can enable activity"))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .cardStyle()
-    }
-
-    private func appIcon(_ id: String) -> NSImage {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else {
-            return NSImage(systemSymbolName: "app", accessibilityDescription: nil) ?? NSImage()
-        }
-        return NSWorkspace.shared.icon(forFile: url.path)
-    }
-
-    private var scheduleBody: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                cardTitle(L("Schedule"), systemImage: "calendar")
-                Spacer(minLength: 8)
-                Toggle("", isOn: Binding(get: { model.scheduleEnabled }, set: { value in
-                    model.scheduleEnabled = value
-                    model.scheduleChanged()
-                }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .accessibilityLabel(L("Schedule"))
-                .pointerCursor()
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 4) {
-                    Text(L("From")).font(.subheadline).fixedSize()
-                    timePickers($model.scheduleStart, label: L("From"), onChange: model.scheduleChanged)
-                    Text(L("To")).font(.subheadline).padding(.leading, 4).fixedSize()
-                    timePickers($model.scheduleEnd, label: L("To"), onChange: model.scheduleChanged)
-                    Spacer(minLength: 0)
-                }
-                HStack(spacing: 5) {
-                    Text(L("Repeat")).font(.subheadline)
-                    Spacer(minLength: 4)
-                    ForEach(weekdayNames, id: \.self) { day in
-                        dayChip(day)
-                    }
-                }
-                if model.scheduleDays.isEmpty {
-                    Text(L("Select at least one day"))
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            .disabled(!model.scheduleEnabled)
-            .opacity(model.scheduleEnabled ? 1 : 0.5)
-            if model.scheduleWindows > 1 {
-                Text(String(format: L("+%d more windows in the configuration file"), model.scheduleWindows - 1))
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private func timePickers(_ date: Binding<Date>, label: String, onChange: @escaping () -> Void) -> some View {
-        let calendar = Calendar.current
-        let hour = calendar.component(.hour, from: date.wrappedValue)
-        let minute = calendar.component(.minute, from: date.wrappedValue)
-        let minutes = Set(stride(from: 0, to: 60, by: 5)).union([minute]).sorted()
-        return HStack(spacing: 3) {
-            Picker(String(format: L("%@ hour"), label), selection: Binding(get: { hour }, set: { value in
-                date.wrappedValue = time(of: date.wrappedValue, hour: value, minute: minute)
-                onChange()
-            })) {
-                ForEach(0...23, id: \.self) { value in
-                    Text(String(format: "%02d", value)).tag(value)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(width: 48)
-            .pointerCursor()
-            Picker(String(format: L("%@ minute"), label), selection: Binding(get: { minute }, set: { value in
-                date.wrappedValue = time(of: date.wrappedValue, hour: hour, minute: value)
-                onChange()
-            })) {
-                ForEach(minutes, id: \.self) { value in
-                    Text(String(format: "%02d", value)).tag(value)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .frame(width: 48)
-            .pointerCursor()
-        }
-        .controlSize(.small)
-    }
-
-    private func time(of date: Date, hour: Int, minute: Int) -> Date {
-        let calendar = Calendar.current
-        var comps = calendar.dateComponents([.year, .month, .day], from: date)
-        comps.hour = hour
-        comps.minute = minute
-        comps.second = 0
-        return calendar.date(from: comps) ?? date
+            .fixedSize()
+            .accessibilityLabel(label)
     }
 
     private func dayChip(_ day: String) -> some View {
@@ -802,8 +445,9 @@ struct PanelView: View {
         } label: {
             Text(L(dayLabel(day)))
                 .font(.caption.weight(.medium))
-                .frame(width: 27, height: 21)
-                .background(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary), in: RoundedRectangle(cornerRadius: 5))
+                .frame(width: 30, height: 22)
+                .background(selected ? AnyShapeStyle(.tint) : AnyShapeStyle(.quaternary),
+                            in: RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .foregroundStyle(selected ? Color.white : Color.primary)
         }
         .buttonStyle(.plain)
@@ -824,154 +468,360 @@ struct PanelView: View {
         }
     }
 
-    private var permissionCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(L("Accessibility permission needed"), systemImage: "hand.raised.fill")
-                .font(.subheadline.weight(.semibold))
-            Text(L("GiGi needs Accessibility permission to move the cursor."))
-                .font(.caption).foregroundStyle(.secondary)
-            Button(L("Open Accessibility settings"), action: model.accessibility)
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .pointerCursor()
+    private var appConditionSection: some View {
+        PanelSection {
+            toggleRow(L("Only while an app…"), symbol: "app.dashed",
+                      detail: model.appCondition.enabled ? L("Any selected app can enable activity") : nil,
+                      isOn: Binding(get: { model.appCondition.enabled }, set: {
+                          model.appCondition.enabled = $0
+                          model.appConditionChanged()
+                      }))
+            if model.appCondition.enabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    Picker(L("App condition"), selection: Binding(get: { model.appCondition.mode }, set: {
+                        model.appCondition.mode = $0
+                        model.appConditionChanged()
+                    })) {
+                        Text(L("Is running")).tag("running")
+                        Text(L("Is in front")).tag("frontmost")
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    ForEach(model.appCondition.apps) { app in
+                        HStack(spacing: 8) {
+                            Image(nsImage: appIcon(app.id))
+                                .resizable().frame(width: 18, height: 18)
+                                .accessibilityHidden(true)
+                            Text(app.name).lineLimit(1)
+                            Spacer(minLength: 8)
+                            Button {
+                                model.appCondition.apps.removeAll { $0.id == app.id }
+                                model.appConditionChanged()
+                            } label: {
+                                Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(String(format: L("Remove %@"), app.name))
+                            .pointerCursor()
+                        }
+                    }
+                    HStack(spacing: 8) {
+                        Button(action: model.addApp) {
+                            Label(L("Add app"), systemImage: "plus")
+                        }
+                        .controlSize(.small)
+                        .pointerCursor()
+                        if model.appCondition.apps.isEmpty {
+                            Text(L("Choose an app to watch")).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(.leading, RowMetrics.textInset)
+                .padding(.trailing, RowMetrics.padding)
+                .padding(.bottom, 10)
+            }
         }
-        .cardStyle()
-        .tint(.orange)
+        .animation(expand, value: model.appCondition.enabled)
+    }
+
+    private func appIcon(_ id: String) -> NSImage {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: id) else {
+            return NSImage(systemSymbolName: "app", accessibilityDescription: nil) ?? NSImage()
+        }
+        return NSWorkspace.shared.icon(forFile: url.path)
+    }
+
+    private func navigationRow(_ title: String, symbol: String, detail: String?, page: String) -> some View {
+        Button {
+            model.drawer = page
+        } label: {
+            SettingRow(title: title, symbol: symbol, detail: detail) {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(detail ?? "")
+        .pointerCursor()
+    }
+
+    private func drawerPage(_ kind: String) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Button {
+                    model.drawer = nil
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left").font(.body.weight(.semibold))
+                        Text(kind == "movement" ? L("Movement") : L("Settings")).font(.headline)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
+                .accessibilityLabel(L("Close"))
+                .pointerCursor()
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                if kind == "movement" { movementBody } else { settingsBody }
+                errorLabel
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 4)
+            .padding(.bottom, 12)
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: DrawerHeightKey.self, value: proxy.size.height)
+            })
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private var movementBody: some View {
+        Group {
+            PanelSection {
+                SettingRow(title: L("Idle delay"), symbol: "hourglass") {
+                    NumberField(value: $model.idleThreshold, range: 1...3600, commit: model.movementChanged)
+                    unit(L("seconds"))
+                }
+                RowDivider()
+                SettingRow(title: L("Move every"), symbol: "repeat") {
+                    NumberField(value: $model.intervalLow, range: 1...3600, commit: model.movementChanged)
+                    Text("–").foregroundStyle(.secondary)
+                    NumberField(value: $model.intervalHigh, range: 1...3600, commit: model.movementChanged)
+                    unit(L("seconds"))
+                }
+            }
+            PanelSection {
+                SettingRow(title: L("Pattern"), symbol: "scribble.variable") {
+                    menuPicker(L("Pattern"), selection: Binding(get: { model.motionPattern }, set: {
+                        model.motionPattern = $0
+                        model.movementChanged()
+                    })) {
+                        ForEach(Motion.patterns, id: \.self) { pattern in
+                            Text(Motion.label(pattern)).tag(pattern)
+                        }
+                    }
+                }
+                if model.motionPattern != Motion.defaultPattern {
+                    RowDivider()
+                    SettingRow(title: L("Radius"), symbol: "circle.dashed") {
+                        NumberField(value: $model.motionRadius, range: Motion.radiusRange, commit: model.movementChanged)
+                        unit(L("px"))
+                    }
+                }
+            }
+            PanelSection {
+                SettingRow(title: L("Clicks"), symbol: "cursorarrow.click") {
+                    menuPicker(L("Clicks"), selection: Binding(get: { model.clickMode }, set: {
+                        model.clickMode = $0
+                        model.movementChanged()
+                    })) {
+                        Text(L("None")).tag("none")
+                        Text(L("Single")).tag("single")
+                        Text(L("Double")).tag("double")
+                        Text(L("Right")).tag("right")
+                    }
+                }
+                RowDivider()
+                SettingRow(title: L("Scroll"), symbol: "scroll",
+                           detail: model.clickMode != "none" || model.scrollMode != "none"
+                               ? L("Clicks and scrolls land wherever the pointer is") : nil) {
+                    menuPicker(L("Scroll"), selection: Binding(get: { model.scrollMode }, set: {
+                        model.scrollMode = $0
+                        model.movementChanged()
+                    })) {
+                        Text(L("None")).tag("none")
+                        Text(L("Ping")).tag("ping")
+                        Text(L("Down")).tag("down")
+                        Text(L("Up")).tag("up")
+                    }
+                }
+            }
+        }
     }
 
     private var settingsBody: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label(L("Start at login"), systemImage: "power")
-                Spacer()
-                Toggle(L("Start at login"), isOn: Binding(get: { model.login }, set: {
+        Group {
+            PanelSection {
+                toggleRow(L("Start at login"), symbol: "power", isOn: Binding(get: { model.login }, set: {
                     model.login = $0
                     model.loginChanged()
                 }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .pointerCursor()
+                RowDivider()
+                toggleRow(L("Notifications"), symbol: "bell", detail: notificationsSummary,
+                          isOn: Binding(get: { model.notificationsEnabled }, set: {
+                              model.notificationsEnabled = $0
+                              model.notificationsChanged()
+                          }))
+                RowDivider()
+                shortcutRow
             }
-            displaySetting
-            dimSetting
-            keyboardSetting
-            Divider()
-            notificationsSetting
-            Divider()
-            shortcutRow
-            Divider()
-            HStack {
-                Label(L("Language"), systemImage: "globe")
-                Spacer(minLength: 8)
-                Picker(L("Language"), selection: Binding(get: { model.language }, set: {
-                    model.language = $0
-                    model.preferencesChanged()
-                })) {
-                    Text(L("System")).tag("system")
-                    Text("English").tag("en")
-                    Text("Español").tag("es")
+            PanelSection {
+                toggleRow(L("Keep display awake"), symbol: "display",
+                          detail: model.status.displayAssertion ? L("Screen stays on while active") : L("Normal display sleep"),
+                          isOn: Binding(get: { model.preventDisplaySleep }, set: { _ in model.screen() }))
+                RowDivider()
+                toggleRow(L("Dim the display"), symbol: "sun.min", detail: dimSummary,
+                          isOn: Binding(get: { model.dimWhileActive }, set: {
+                              model.dimWhileActive = $0
+                              model.dimChanged()
+                          }))
+                    .disabled(!model.preventDisplaySleep || !model.brightnessSupported)
+                if model.dimWhileActive && model.preventDisplaySleep && model.brightnessSupported { dimSlider }
+                RowDivider()
+                toggleRow(L("Turn off the keyboard light"), symbol: "light.min", detail: keyboardSummary,
+                          isOn: Binding(get: { model.turnOffKeyboardLight }, set: {
+                              model.turnOffKeyboardLight = $0
+                              model.keyboardLightChanged()
+                          }))
+                    .disabled(!model.keyboardLightSupported)
+            }
+            .animation(expand, value: model.dimWhileActive)
+            PanelSection {
+                SettingRow(title: L("Language"), symbol: "globe") {
+                    menuPicker(L("Language"), selection: Binding(get: { model.language }, set: {
+                        model.language = $0
+                        model.preferencesChanged()
+                    })) {
+                        Text(L("System")).tag("system")
+                        Text("English").tag("en")
+                        Text("Español").tag("es")
+                    }
                 }
-                .labelsHidden()
-                .frame(width: 132)
-                .pointerCursor()
-            }
-            HStack {
-                Label(L("Appearance"), systemImage: "circle.lefthalf.filled")
-                Spacer(minLength: 8)
-                Picker(L("Appearance"), selection: Binding(get: { model.theme }, set: {
-                    model.theme = $0
-                    model.preferencesChanged()
-                })) {
-                    Text(L("System")).tag("system")
-                    Text(L("Light")).tag("light")
-                    Text(L("Dark")).tag("dark")
+                RowDivider()
+                SettingRow(title: L("Appearance"), symbol: "circle.lefthalf.filled") {
+                    menuPicker(L("Appearance"), selection: Binding(get: { model.theme }, set: {
+                        model.theme = $0
+                        model.preferencesChanged()
+                    })) {
+                        Text(L("System")).tag("system")
+                        Text(L("Light")).tag("light")
+                        Text(L("Dark")).tag("dark")
+                    }
                 }
-                .labelsHidden()
-                .frame(width: 132)
-                .pointerCursor()
             }
-            Divider()
-            settingsAction("Open log", symbol: "doc.text", action: model.log)
-            DisclosureGroup(L("Advanced")) {
-                VStack(alignment: .leading, spacing: 10) {
-                    settingsAction("Reload configuration", symbol: "arrow.clockwise", action: model.reload)
-                    settingsAction("Open configuration folder", symbol: "folder", action: model.configFolder)
+            PanelSection {
+                SettingRow(title: L("Version"), symbol: "info.circle") {
+                    Text(model.version).monospacedDigit().foregroundStyle(.secondary)
                 }
-                .padding(.top, 8)
+                RowDivider()
+                toggleRow(L("Check for updates automatically"), symbol: "arrow.triangle.2.circlepath",
+                          isOn: Binding(get: { model.checkForUpdates }, set: {
+                              model.checkForUpdates = $0
+                              model.checkForUpdatesChanged()
+                          }))
+                RowDivider()
+                updateStatusRow
             }
-            Divider()
-            HStack {
-                Label(L("Version"), systemImage: "info.circle")
-                Spacer(minLength: 8)
-                Text(model.version)
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+            PanelSection {
+                actionRow("Open log", symbol: "doc.text", action: model.log)
+                RowDivider()
+                actionRow("Reload configuration", symbol: "arrow.clockwise", action: model.reload)
+                RowDivider()
+                actionRow("Open configuration folder", symbol: "folder", action: model.configFolder)
             }
-            HStack {
-                Label(L("Check for updates automatically"), systemImage: "arrow.triangle.2.circlepath")
-                Spacer(minLength: 8)
-                Toggle(L("Check for updates automatically"), isOn: Binding(get: { model.checkForUpdates }, set: {
-                    model.checkForUpdates = $0
-                    model.checkForUpdatesChanged()
-                }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .pointerCursor()
-            }
-            updateStatusRow
         }
-        .pickerStyle(.menu)
-        .font(.subheadline)
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var shortcutRow: some View {
+        SettingRow(title: L("Shortcut"), symbol: "command",
+                   detail: model.recordingHotkey ? L("Press a key combination") : nil) {
+            if model.recordingHotkey {
+                Button(L("Cancel"), action: model.recordHotkey).controlSize(.small).pointerCursor()
+            } else {
+                Text(model.hotkeyDisplay.isEmpty ? "—" : model.hotkeyDisplay)
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+                Button(L("Record"), action: model.recordHotkey).controlSize(.small).pointerCursor()
+            }
+        }
+    }
+
+    private var dimSlider: some View {
+        RowDetail {
+            Image(systemName: "sun.min").font(.caption).foregroundStyle(.secondary)
+            Slider(value: Binding(get: { model.dimBrightness }, set: { value in
+                model.dimBrightness = value
+                model.dimPreview()
+            }), in: 0...1, onEditingChanged: { editing in
+                if !editing { model.dimChanged() }
+            })
+            .controlSize(.small)
+            .accessibilityLabel(L("Brightness"))
+            .pointerCursor()
+            Image(systemName: "sun.max").font(.caption).foregroundStyle(.secondary)
+            Text(String(format: "%d%%", Int((model.dimBrightness * 100).rounded())))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 32, alignment: .trailing)
+        }
+    }
+
+    private var dimSummary: String {
+        if !model.brightnessSupported { return L("This display does not allow brightness control") }
+        if !model.preventDisplaySleep { return L("Keep the display awake to dim it") }
+        guard model.dimWhileActive else { return L("Normal brightness") }
+        return String(format: L("Dimmed to %d%% while GiGi is active"), Int((model.dimBrightness * 100).rounded()))
+    }
+
+    private var keyboardSummary: String {
+        if !model.keyboardLightSupported { return L("This Mac does not allow keyboard light control") }
+        guard model.turnOffKeyboardLight else { return L("Normal keyboard light") }
+        return L("Keyboard light off while GiGi is active")
+    }
+
+    private var notificationsSummary: String {
+        guard model.notificationsEnabled else { return L("Silent") }
+        if model.notificationsDenied { return L("Blocked in System Settings") }
+        return L("Warn me when GiGi stops on its own")
     }
 
     @ViewBuilder
     private var updateStatusRow: some View {
         switch model.update {
         case .idle:
-            settingsAction("Check now", symbol: "arrow.down.circle", action: model.checkForUpdatesNow)
+            actionRow("Check now", symbol: "arrow.down.circle", action: model.checkForUpdatesNow)
         case .checking:
-            HStack(spacing: 8) {
+            SettingRow(title: L("Checking for updates…"), symbol: "arrow.down.circle") {
                 ProgressView().controlSize(.small)
-                Text(L("Checking for updates…")).foregroundStyle(.secondary)
-                Spacer(minLength: 0)
             }
         case .upToDate:
-            HStack {
-                Label(L("GiGi is up to date"), systemImage: "checkmark.circle")
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
+            SettingRow(title: L("GiGi is up to date"), symbol: "checkmark.circle") {
+                EmptyView()
             }
         case .available(let version):
-            HStack(spacing: 8) {
-                Label(String(format: L("GiGi %@ is available"), version), systemImage: "gift")
-                    .foregroundStyle(.primary)
-                Spacer(minLength: 8)
-                Button(L("View release"), action: model.openReleasePage)
-                    .controlSize(.small)
-                    .pointerCursor()
+            SettingRow(title: String(format: L("GiGi %@ is available"), version), symbol: "gift") {
+                Button(L("View release"), action: model.openReleasePage).controlSize(.small).pointerCursor()
             }
         case .failed(let reason):
-            HStack(spacing: 8) {
-                Label(reason, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 8)
-                Button(L("Check now"), action: model.checkForUpdatesNow)
-                    .controlSize(.small)
-                    .pointerCursor()
+            SettingRow(title: reason, symbol: "exclamationmark.triangle") {
+                Button(L("Check now"), action: model.checkForUpdatesNow).controlSize(.small).pointerCursor()
             }
         }
     }
 
-    private func settingsAction(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
+    private func toggleRow(_ title: String, symbol: String, detail: String? = nil, isOn: Binding<Bool>) -> some View {
+        SettingRow(title: title, symbol: symbol, detail: detail) {
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .pointerCursor()
+        }
+    }
+
+    private func actionRow(_ title: String, symbol: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack {
-                Label(L(title), systemImage: symbol)
-                Spacer(minLength: 4)
-                Image(systemName: "arrow.up.forward").foregroundStyle(.secondary)
+            SettingRow(title: L(title), symbol: symbol) {
+                Image(systemName: "arrow.up.forward")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
             }
             .contentShape(Rectangle())
         }
@@ -979,51 +829,115 @@ struct PanelView: View {
         .pointerCursor()
     }
 
-    private var footer: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(String(format: L("%d movements"), model.status.jiggles))                        .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                if let idle = model.status.lastIdle {
-                    Text(String(format: L("Idle %.0fs"), idle)).font(.caption2).foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            Button(action: model.move) {
-                Label(L("Move now"), systemImage: "cursorarrow.motionlines")
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .disabled(!model.status.accessibilityTrusted)
-            .pointerCursor(model.status.accessibilityTrusted)
-            Menu {
-                Button(L("Quit"), action: model.quit)
-            } label: {
-                Image(systemName: "ellipsis")
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .frame(width: 24)
+    private func menuPicker<Value: Hashable, Options: View>(
+        _ title: String, selection: Binding<Value>, @ViewBuilder options: () -> Options
+    ) -> some View {
+        Picker(title, selection: selection, content: options)
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .fixedSize()
             .pointerCursor()
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(GeometryReader { proxy in
-            Color.clear.preference(key: FooterHeightKey.self, value: proxy.size.height)
-        })
     }
 
-    private func cardTitle(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.primary)
+    private func unit(_ text: String) -> some View {
+        Text(text).font(.caption).foregroundStyle(.secondary).fixedSize()
+    }
+}
+
+private struct StateGlyph: View {
+    let state: StatusIcon.State
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(state == .inactive ? AnyShapeStyle(.quaternary) : AnyShapeStyle(.tint.opacity(0.18)))
+            Image(nsImage: StatusIcon.image(for: state))
+                .renderingMode(.template)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 32)
+                .foregroundStyle(state == .inactive ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
+            Image(nsImage: StatusIcon.badge(for: state))
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 32)
+        }
+        .frame(width: 36, height: 36)
+        .animation(.easeInOut(duration: 0.2), value: state)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct PanelSection<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) { content }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.quinary, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private enum RowMetrics {
+    static let padding: CGFloat = 10
+    static let textInset: CGFloat = padding + 20 + 10
+}
+
+private struct SettingRow<Accessory: View>: View {
+    let title: String
+    let symbol: String
+    var detail: String? = nil
+    @ViewBuilder var accessory: Accessory
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                if let detail {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 8)
+            HStack(spacing: 6) { accessory }
+                .controlSize(.small)
+                .fixedSize()
+        }
+        .padding(.horizontal, RowMetrics.padding)
+        .padding(.vertical, 8)
+        .frame(minHeight: 38)
+    }
+}
+
+private struct RowDetail<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        HStack(spacing: 8) { content }
+            .controlSize(.small)
+            .padding(.leading, RowMetrics.textInset)
+            .padding(.trailing, RowMetrics.padding)
+            .padding(.bottom, 10)
+    }
+}
+
+private struct RowDivider: View {
+    var body: some View {
+        Divider().padding(.leading, RowMetrics.textInset)
     }
 }
 
 private struct NumberField: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
-    var width: CGFloat = 60
+    var width: CGFloat = 44
     let commit: () -> Void
 
     @State private var text = ""
@@ -1037,6 +951,7 @@ private struct NumberField: View {
             .frame(width: width)
             .focused($editing)
             .onAppear { text = display(value) }
+            .onDisappear { apply() }
             .onChange(of: value) { _, new in
                 if !editing { text = display(new) }
             }
@@ -1066,12 +981,6 @@ private struct NumberField: View {
 }
 
 private extension View {
-    func cardStyle() -> some View {
-        frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(.quaternary.opacity(0.34), in: RoundedRectangle(cornerRadius: 12))
-    }
-
     @ViewBuilder
     func pointerCursor(_ enabled: Bool = true) -> some View {
         if #available(macOS 15.0, *) {

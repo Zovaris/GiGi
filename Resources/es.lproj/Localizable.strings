@@ -54,7 +54,6 @@
 "For" = "Por";
 "Until" = "Hasta";
 "Minutes" = "Minutos";
-"minutes" = "minutos";
 "End time" = "Hora de finalización";
 "Ends at %@" = "Termina a las %@";
 "Screen stays on while active" = "La pantalla permanece activa mientras GiGi corre";
@@ -80,7 +79,6 @@
 "Radius" = "Radio";
 "px" = "px";
 "seconds" = "segundos";
-"Apply movement" = "Aplicar movimiento";
 "Could not write the configuration file" = "No se pudo escribir el archivo de configuración";
 
 "System" = "Sistema";
@@ -93,7 +91,6 @@
 
 "Dark" = "Oscuro";
 
-"Advanced" = "Avanzado";
 
 "Close" = "Cerrar";
 
@@ -101,13 +98,10 @@
 
 "From" = "Desde";
 
-"%@ hour" = "Hora de %@";
 
-"%@ minute" = "Minutos de %@";
 
 "To" = "Hasta";
 
-"Repeat" = "Repetir";
 
 
 "Select at least one day" = "Seleccioná al menos un día";
@@ -150,7 +144,6 @@
 
 "keyboard light off" = "luz del teclado apagada";
 
-"Runs until you stop it" = "Activo hasta que lo detengas";
 
 "Battery limit" = "Límite de batería";
 
@@ -215,3 +208,4 @@
 "Check for updates…" = "Buscar actualizaciones…";
 
 "Open Settings in the panel to see the release page." = "Abrí Ajustes en el panel para ver la página de la versión.";
+"More" = "Más";

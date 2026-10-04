@@ -54,7 +54,6 @@
 "For" = "For";
 "Until" = "Until";
 "Minutes" = "Minutes";
-"minutes" = "minutes";
 "End time" = "End time";
 "Ends at %@" = "Ends at %@";
 "Screen stays on while active" = "Screen stays on while active";
@@ -80,7 +79,6 @@
 "Radius" = "Radius";
 "px" = "px";
 "seconds" = "seconds";
-"Apply movement" = "Apply movement";
 "Could not write the configuration file" = "Could not write the configuration file";
 
 "System" = "System";
@@ -93,7 +91,6 @@
 
 "Dark" = "Dark";
 
-"Advanced" = "Advanced";
 
 "Close" = "Close";
 
@@ -101,13 +98,10 @@
 
 "From" = "From";
 
-"%@ hour" = "%@ hour";
 
-"%@ minute" = "%@ minute";
 
 "To" = "To";
 
-"Repeat" = "Repeat";
 
 
 "Select at least one day" = "Select at least one day";
@@ -150,7 +144,6 @@
 
 "keyboard light off" = "keyboard light off";
 
-"Runs until you stop it" = "Runs until you stop it";
 
 "Battery limit" = "Battery limit";
 
@@ -215,3 +208,4 @@
 "Check for updates…" = "Check for updates…";
 
 "Open Settings in the panel to see the release page." = "Open Settings in the panel to see the release page.";
+"More" = "More";
