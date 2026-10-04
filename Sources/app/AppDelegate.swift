@@ -46,8 +46,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSLayoutConstraint.activate([
                 statusBadge.centerXAnchor.constraint(equalTo: button.centerXAnchor),
                 statusBadge.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-                statusBadge.widthAnchor.constraint(equalToConstant: 22),
-                statusBadge.heightAnchor.constraint(equalToConstant: 20)
+                statusBadge.widthAnchor.constraint(equalToConstant: StatusIcon.size.width),
+                statusBadge.heightAnchor.constraint(equalToConstant: StatusIcon.size.height)
             ])
         }
         if let configPath { defaults.set(configPath, forKey: "configPath") }
@@ -439,7 +439,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             : Motion.label(engine.config.motionPattern) + " · " + window
 
         let indicator = StatusIcon.state(for: status)
-        statusItem.button?.image = StatusIcon.image(for: indicator, running: status.running)
+        statusItem.button?.image = StatusIcon.image(for: indicator)
         statusBadge.image = StatusIcon.badge(for: indicator)
         let description = "GiGi: " + L(indicator.label)
         statusItem.button?.toolTip = description + " · " + String(format: L("%d movements"), status.jiggles)
