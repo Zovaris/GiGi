@@ -3,6 +3,10 @@
 Newest first. Versions match the `vX.Y.Z` tags and the app's `Info.plist`; dates are ISO 8601.
 Cut a release with `make version`, which writes the section for you.
 
+## 0.4.3 - 2026-10-04
+
+- Maintenance release
+
 ## 0.4.2 - 2026-10-04
 
 **Added**
