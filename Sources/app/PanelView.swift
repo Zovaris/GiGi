@@ -48,7 +48,6 @@ final class PanelModel: ObservableObject {
 
     var heightChanged: () -> Void = {}
     @Published var preventDisplaySleep = true
-    @Published var mode = "schedule"
     @Published var timerKind = "none"
     @Published var minutes: Double = 15
     @Published var until = Date()
@@ -99,7 +98,6 @@ final class PanelModel: ObservableObject {
 
     var toggle: () -> Void = {}
     var screen: () -> Void = {}
-    var modeChanged: (String) -> Void = { _ in }
     var timerChanged: () -> Void = {}
     var movementChanged: () -> Void = {}
     var dimPreview: () -> Void = {}
@@ -587,24 +585,6 @@ struct PanelView: View {
         return L("Warn me when GiGi stops on its own")
     }
 
-    private var modeRow: some View {
-        HStack {
-            Label(L("Mode"), systemImage: "arrow.triangle.2.circlepath")
-                .font(.subheadline.weight(.medium))
-            Spacer()
-            Picker(L("Mode"), selection: Binding(get: { model.mode }, set: {
-                model.mode = $0
-                model.modeChanged($0)
-            })) {
-                Text(L("Schedule")).tag("schedule")
-                Text(L("Always")).tag("always")
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .pointerCursor()
-        }
-    }
-
     private var scheduleCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             scheduleBody
@@ -612,8 +592,6 @@ struct PanelView: View {
             timerBody
             Divider()
             batteryBody
-            Divider()
-            modeRow
         }
         .cardStyle()
     }
@@ -761,12 +739,6 @@ struct PanelView: View {
             }
             .disabled(!model.scheduleEnabled)
             .opacity(model.scheduleEnabled ? 1 : 0.5)
-            if model.scheduleEnabled && model.mode == "always" {
-                Label(L("Mode Always is ignoring this window"), systemImage: "info.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(L("Mode Always is ignoring this window"))
-            }
             if model.scheduleWindows > 1 {
                 Text(String(format: L("+%d more windows in the configuration file"), model.scheduleWindows - 1))
                     .font(.caption2).foregroundStyle(.secondary)

@@ -19,9 +19,6 @@
 "4 hours" = "4 horas";
 "9 hours" = "9 horas";
 "Until %@" = "Hasta las %@";
-"Mode" = "Modo";
-"Respect config schedule" = "Respetar horario del config";
-"Always force" = "Forzar siempre";
 "Keep display awake" = "Mantener pantalla encendida";
 "Recent activity" = "Actividad reciente";
 "no events yet" = "sin eventos aún";
@@ -63,7 +60,6 @@
 "Screen stays on while active" = "La pantalla permanece activa mientras GiGi corre";
 "Normal display sleep" = "Reposo normal de la pantalla";
 "Schedule" = "Horario";
-"Always" = "Siempre";
 "Accessibility permission needed" = "Se necesita permiso de Accesibilidad";
 "After %.0fs idle · every %.0f–%.0fs" = "Tras %.0fs de inactividad · cada %.0f–%.0fs";
 "GiGi needs Accessibility permission to move the cursor." = "GiGi necesita permiso de Accesibilidad para mover el cursor.";
@@ -113,7 +109,6 @@
 
 "Repeat" = "Repetir";
 
-"Mode Always is ignoring this window" = "El modo Siempre está ignorando esta ventana";
 
 "Select at least one day" = "Seleccioná al menos un día";
 

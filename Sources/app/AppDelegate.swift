@@ -26,7 +26,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var toggleItem: NSMenuItem!
     private var jiggleItem: NSMenuItem!
     private var timerMenuItem: NSMenuItem!
-    private var modeMenuItem: NSMenuItem!
     private var screenItem: NSMenuItem!
     private var accessibilityItem: NSMenuItem!
     private var launchAtLoginItem: NSMenuItem!
@@ -62,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        engine.mode = Engine.Mode(rawValue: defaults.string(forKey: "mode") ?? "") ?? .schedule
+        migrateLegacyMode()
         if defaults.object(forKey: "preventDisplaySleep") != nil {
             engine.preventDisplaySleep = defaults.bool(forKey: "preventDisplaySleep")
         }
@@ -123,7 +122,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let timer { RunLoop.main.add(timer, forMode: .common) }
 
         refresh()
-        Log.info("app: ready - mode \(engine.mode.rawValue), state \(engine.shortStatus), "
+        Log.info("app: ready - state \(engine.shortStatus), "
                  + "accessibility \(accessibilityTrusted() ? "ok" : "MISSING")")
     }
 
@@ -242,13 +241,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refresh()
     }
 
-    @objc private func setMode(_ sender: NSMenuItem) {
-        engine.mode = Engine.Mode(rawValue: sender.representedObject as? String ?? "schedule") ?? .schedule
-        defaults.set(engine.mode.rawValue, forKey: "mode")
-        Log.info("menu: mode \(engine.mode.rawValue)")
-        refresh()
-    }
-
     private func displayConfigurationChanged() {
         DispatchQueue.main.async { [weak self] in
             guard let self, Date().timeIntervalSince(self.lastDisplayChange) > 0.5 else { return }
@@ -356,21 +348,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         timerMenuItem.submenu = timerMenu
         menu.addItem(timerMenuItem)
 
-        modeMenuItem = NSMenuItem(title: L("Mode"), action: nil, keyEquivalent: "")
-        let modeMenu = NSMenu()
-        modeMenu.autoenablesItems = false
-        let modes: [(String, String)] = [
-            ("Respect config schedule", "schedule"), ("Always force", "always"),
-        ]
-        for (key, value) in modes {
-            let item = NSMenuItem(title: L(key), action: #selector(setMode(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = value
-            modeMenu.addItem(item)
-        }
-        modeMenuItem.submenu = modeMenu
-        menu.addItem(modeMenuItem)
-
         screenItem = NSMenuItem(title: L("Keep display awake"),
                                 action: #selector(toggleScreenAssertion), keyEquivalent: "")
         screenItem.target = self
@@ -429,7 +406,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panel.status = status
         panel.notificationsDenied = notifier.denied
         panel.preventDisplaySleep = engine.preventDisplaySleep
-        panel.mode = engine.mode.rawValue
         panel.login = SMAppService.mainApp.status == .enabled
         let window = String(format: L("After %.0fs idle · every %.0f–%.0fs"),
                             engine.config.idleThresholdSeconds,
@@ -489,9 +465,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             unlimited.state = .on
         }
 
-        modeMenuItem.submenu?.items.forEach {
-            $0.state = (($0.representedObject as? String) == engine.mode.rawValue) ? .on : .off
-        }
         screenItem.state = engine.preventDisplaySleep ? .on : .off
 
         if status.accessibilityTrusted {
@@ -546,12 +519,6 @@ private extension AppDelegate {
         panel.until = defaults.object(forKey: "timerUntil") as? Date ?? Date()
         panel.toggle = { [weak self] in self?.toggleEngine() }
         panel.screen = { [weak self] in self?.toggleScreenAssertion() }
-        panel.modeChanged = { [weak self] value in
-            guard let self else { return }
-            self.engine.mode = Engine.Mode(rawValue: value) ?? .schedule
-            self.defaults.set(value, forKey: "mode")
-            self.refresh()
-        }
         panel.timerChanged = { [weak self] in
             guard let self else { return }
             if self.panel.timerKind != "none", self.panel.scheduleEnabled {
@@ -593,6 +560,18 @@ private extension AppDelegate {
         popover.contentViewController = controller
         applyAppearance()
         popover.contentSize = NSSize(width: 360, height: panel.panelHeight)
+    }
+
+    private func migrateLegacyMode() {
+        guard let legacy = defaults.string(forKey: "mode") else { return }
+        defaults.removeObject(forKey: "mode")
+        guard legacy == Engine.Mode.always.rawValue, engine.config.schedule.enabled else { return }
+        var config = engine.config
+        config.schedule.enabled = false
+        engine.apply(config: config)
+        if saveConfig(config, path: AppDelegate.configPathFromArguments()) {
+            Log.info("app: Mode Always is gone, so the schedule is now off")
+        }
     }
 
     private func syncPanelFromConfig() {

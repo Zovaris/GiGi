@@ -19,9 +19,6 @@
 "4 hours" = "4 hours";
 "9 hours" = "9 hours";
 "Until %@" = "Until %@";
-"Mode" = "Mode";
-"Respect config schedule" = "Respect config schedule";
-"Always force" = "Always force";
 "Keep display awake" = "Keep display awake";
 "Recent activity" = "Recent activity";
 "no events yet" = "no events yet";
@@ -63,7 +60,6 @@
 "Screen stays on while active" = "Screen stays on while active";
 "Normal display sleep" = "Normal display sleep";
 "Schedule" = "Schedule";
-"Always" = "Always";
 "Accessibility permission needed" = "Accessibility permission needed";
 "After %.0fs idle · every %.0f–%.0fs" = "After %.0fs idle · every %.0f–%.0fs";
 "GiGi needs Accessibility permission to move the cursor." = "GiGi needs Accessibility permission to move the cursor.";
@@ -113,7 +109,6 @@
 
 "Repeat" = "Repeat";
 
-"Mode Always is ignoring this window" = "Mode Always is ignoring this window";
 
 "Select at least one day" = "Select at least one day";
 
