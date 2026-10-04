@@ -47,10 +47,10 @@ xattr -dr com.apple.quarantine GiGi.app
 
 ## Use
 
-Click the menu bar icon to open the control panel. Start GiGi, then choose a timer, schedule, or
-**Always** mode. The panel also controls cursor movement, display wakefulness, dimming, the keyboard
-backlight, battery limits, notifications, updates, the global shortcut, and optional click or
-scroll events.
+Click the menu bar icon to open the control panel. Start GiGi, then choose a timer or a schedule;
+with the schedule off, GiGi runs at any hour. The panel also controls cursor movement, display
+wakefulness, dimming, the keyboard backlight, battery limits, notifications, updates, the global
+shortcut, and optional click or scroll events.
 
 The CLI can control a running app:
 

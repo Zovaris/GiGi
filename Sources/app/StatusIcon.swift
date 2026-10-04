@@ -14,60 +14,87 @@ enum StatusIcon {
         }
     }
 
+    static let size = NSSize(width: 20, height: 18)
+    private static let scale: CGFloat = 0.049
+    private static let outline: [(x: CGFloat, y: CGFloat, radius: CGFloat)] = [
+        (0, 0, 1.3), (194, 124, 1.0), (102, 150, 0.5), (40, 210, 1.0)
+    ]
+
     static func state(for status: Engine.Status) -> State {
         if !status.accessibilityTrusted { return .permissionNeeded }
         if !status.running { return .inactive }
         return (status.outOfSchedule || status.waitingForApp) ? .waiting : .active
     }
 
-    private static func drawCursor(ink: NSColor, running: Bool) {
-        ink.setFill()
-        ink.setStroke()
-        let cursor = NSBezierPath()
-        cursor.move(to: NSPoint(x: 6, y: 12))
-        cursor.curve(to: NSPoint(x: 7.6, y: 13), controlPoint1: NSPoint(x: 5.8, y: 13.3),
-                     controlPoint2: NSPoint(x: 6.7, y: 13.7))
-        cursor.line(to: NSPoint(x: 17.5, y: 6))
-        cursor.curve(to: NSPoint(x: 17, y: 4.4), controlPoint1: NSPoint(x: 18.5, y: 5.3),
-                     controlPoint2: NSPoint(x: 18.1, y: 4.6))
-        cursor.line(to: NSPoint(x: 12.5, y: 3.8))
-        cursor.line(to: NSPoint(x: 9.5, y: 0.7))
-        cursor.curve(to: NSPoint(x: 7.8, y: 1.2), controlPoint1: NSPoint(x: 8.7, y: -0.1),
-                     controlPoint2: NSPoint(x: 8, y: 0.2))
-        cursor.close()
-        if running {
-            cursor.fill()
-        } else {
-            cursor.lineWidth = 1.5
-            cursor.lineJoinStyle = .round
-            cursor.stroke()
-        }
-        guard running else { return }
-
-        let rays = NSBezierPath()
-        rays.lineWidth = 1.7
-        rays.lineCapStyle = .round
-        for (start, end) in [
-            (NSPoint(x: 2, y: 11.8), NSPoint(x: 3.4, y: 11.8)),
-            (NSPoint(x: 3.2, y: 17), NSPoint(x: 4.4, y: 15.6)),
-            (NSPoint(x: 8, y: 19), NSPoint(x: 8, y: 17.4))
-        ] {
-            rays.move(to: start)
-            rays.line(to: end)
-        }
-        rays.stroke()
+    private static var tip: NSPoint {
+        let points = outline.map { NSPoint(x: $0.x * scale, y: $0.y * scale) }
+        let box = NSRect(x: 0, y: 0, width: points.map(\.x).max() ?? 0, height: points.map(\.y).max() ?? 0)
+        let centroid = NSPoint(x: points.map(\.x).reduce(0, +) / CGFloat(points.count),
+                               y: points.map(\.y).reduce(0, +) / CGFloat(points.count))
+        let optical = NSPoint(x: (box.midX + centroid.x) / 2, y: (box.midY + centroid.y) / 2)
+        return NSPoint(x: size.width / 2 - optical.x, y: size.height / 2 + optical.y)
     }
 
-    static func image(for state: State, running: Bool? = nil) -> NSImage {
-        let image = NSImage(size: NSSize(width: 22, height: 20), flipped: false) { _ in
-            drawCursor(ink: .black, running: running ?? (state != .inactive))
-            if state != .inactive {
-                NSGraphicsContext.saveGraphicsState()
-                NSGraphicsContext.current?.compositingOperation = .copy
-                NSColor.clear.setFill()
-                NSBezierPath(ovalIn: NSRect(x: 10, y: 9, width: 12, height: 12)).fill()
-                NSGraphicsContext.restoreGraphicsState()
+    private static func pointer() -> NSBezierPath {
+        let origin = tip
+        let corners = outline.map { CGPoint(x: origin.x + $0.x * scale, y: origin.y - $0.y * scale) }
+        let path = CGMutablePath()
+        let last = corners[corners.count - 1]
+        path.move(to: CGPoint(x: (last.x + corners[0].x) / 2, y: (last.y + corners[0].y) / 2))
+        for (index, corner) in corners.enumerated() {
+            path.addArc(tangent1End: corner, tangent2End: corners[(index + 1) % corners.count],
+                        radius: outline[index].radius)
+        }
+        path.closeSubpath()
+        return NSBezierPath(cgPath: path)
+    }
+
+    private static func rays() -> NSBezierPath {
+        let origin = NSPoint(x: tip.x + 0.7, y: tip.y - 0.8)
+        let path = NSBezierPath()
+        path.lineWidth = 1.4
+        path.lineCapStyle = .round
+        for degrees in [78.0, 130.0, 186.0] {
+            let angle = degrees * .pi / 180
+            let direction = NSPoint(x: cos(angle), y: sin(angle))
+            path.move(to: NSPoint(x: origin.x + direction.x * 1.7, y: origin.y + direction.y * 1.7))
+            path.line(to: NSPoint(x: origin.x + direction.x * 3.5, y: origin.y + direction.y * 3.5))
+        }
+        return path
+    }
+
+    private static let badgeRect = NSRect(x: size.width - 8, y: size.height - 8, width: 8, height: 8)
+
+    private static func drawBadge(_ name: String, palette: [NSColor]? = nil) {
+        var configuration = NSImage.SymbolConfiguration(pointSize: 8, weight: .bold)
+        if let palette { configuration = configuration.applying(.init(paletteColors: palette)) }
+        guard let badge = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(configuration) else { return }
+        badge.draw(at: NSPoint(x: badgeRect.midX - badge.size.width / 2, y: badgeRect.midY - badge.size.height / 2),
+                   from: .zero, operation: .sourceOver, fraction: 1)
+    }
+
+    private static func clearBadgeArea() {
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current?.compositingOperation = .clear
+        NSBezierPath(ovalIn: badgeRect.insetBy(dx: -1.3, dy: -1.3)).fill()
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    static func image(for state: State) -> NSImage {
+        let image = NSImage(size: size, flipped: false) { _ in
+            NSColor.black.set()
+            let shape = pointer()
+            if state == .inactive {
+                shape.lineWidth = 1.3
+                shape.lineJoinStyle = .round
+                shape.stroke()
+            } else {
+                shape.fill()
             }
+            if state == .active { rays().stroke() }
+            if state == .waiting || state == .permissionNeeded { clearBadgeArea() }
+            if state == .waiting { drawBadge("pause.circle.fill") }
             return true
         }
         image.isTemplate = true
@@ -75,24 +102,8 @@ enum StatusIcon {
     }
 
     static func badge(for state: State) -> NSImage {
-        NSImage(size: NSSize(width: 22, height: 20), flipped: false) { _ in
-            if state != .inactive {
-                let badge = NSRect(x: 11.5, y: 10.5, width: 9, height: 9)
-                switch state {
-                case .active: NSColor.systemGreen.setFill()
-                case .waiting: NSColor.systemOrange.setFill()
-                case .permissionNeeded: NSColor.systemRed.setFill()
-                case .inactive: break
-                }
-                NSBezierPath(ovalIn: badge).fill()
-                if state == .permissionNeeded {
-                    let mark = "!" as NSString
-                    mark.draw(at: NSPoint(x: 14.5, y: 10.7), withAttributes: [
-                        .font: NSFont.systemFont(ofSize: 8, weight: .heavy),
-                        .foregroundColor: NSColor.white
-                    ])
-                }
-            }
+        NSImage(size: size, flipped: false) { _ in
+            if state == .permissionNeeded { drawBadge("exclamationmark.circle.fill", palette: [.white, .systemRed]) }
             return true
         }
     }

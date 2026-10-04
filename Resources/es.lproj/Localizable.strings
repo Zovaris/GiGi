@@ -19,9 +19,6 @@
 "4 hours" = "4 horas";
 "9 hours" = "9 horas";
 "Until %@" = "Hasta las %@";
-"Mode" = "Modo";
-"Respect config schedule" = "Respetar horario del config";
-"Always force" = "Forzar siempre";
 "Keep display awake" = "Mantener pantalla encendida";
 "Recent activity" = "Actividad reciente";
 "no events yet" = "sin eventos aún";
@@ -57,13 +54,11 @@
 "For" = "Por";
 "Until" = "Hasta";
 "Minutes" = "Minutos";
-"minutes" = "minutos";
 "End time" = "Hora de finalización";
 "Ends at %@" = "Termina a las %@";
 "Screen stays on while active" = "La pantalla permanece activa mientras GiGi corre";
 "Normal display sleep" = "Reposo normal de la pantalla";
 "Schedule" = "Horario";
-"Always" = "Siempre";
 "Accessibility permission needed" = "Se necesita permiso de Accesibilidad";
 "After %.0fs idle · every %.0f–%.0fs" = "Tras %.0fs de inactividad · cada %.0f–%.0fs";
 "GiGi needs Accessibility permission to move the cursor." = "GiGi necesita permiso de Accesibilidad para mover el cursor.";
@@ -84,7 +79,6 @@
 "Radius" = "Radio";
 "px" = "px";
 "seconds" = "segundos";
-"Apply movement" = "Aplicar movimiento";
 "Could not write the configuration file" = "No se pudo escribir el archivo de configuración";
 
 "System" = "Sistema";
@@ -97,7 +91,6 @@
 
 "Dark" = "Oscuro";
 
-"Advanced" = "Avanzado";
 
 "Close" = "Cerrar";
 
@@ -105,15 +98,11 @@
 
 "From" = "Desde";
 
-"%@ hour" = "Hora de %@";
 
-"%@ minute" = "Minutos de %@";
 
 "To" = "Hasta";
 
-"Repeat" = "Repetir";
 
-"Mode Always is ignoring this window" = "El modo Siempre está ignorando esta ventana";
 
 "Select at least one day" = "Seleccioná al menos un día";
 
@@ -155,7 +144,6 @@
 
 "keyboard light off" = "luz del teclado apagada";
 
-"Runs until you stop it" = "Activo hasta que lo detengas";
 
 "Battery limit" = "Límite de batería";
 
@@ -220,3 +208,4 @@
 "Check for updates…" = "Buscar actualizaciones…";
 
 "Open Settings in the panel to see the release page." = "Abrí Ajustes en el panel para ver la página de la versión.";
+"More" = "Más";
