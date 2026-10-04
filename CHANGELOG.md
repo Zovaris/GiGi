@@ -3,6 +3,17 @@
 Newest first. Versions match the `vX.Y.Z` tags and the app's `Info.plist`; dates are ISO 8601.
 Cut a release with `make version`, which writes the section for you.
 
+## 0.4.2 - 2026-10-04
+
+**Added**
+
+- Rebuild the panel on one row style and the system glass
+- Draw the menu bar icon as the rounded GiGi pointer
+
+**Changed**
+
+- Drop Mode and let the schedule switch decide alone
+
 ## 0.4.1 - 2026-09-24
 
 **Added**
