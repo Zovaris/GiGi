@@ -76,6 +76,10 @@
 "Circle" = "Circle";
 "Square" = "Square";
 "Figure eight" = "Figure eight";
+"Triangle" = "Triangle";
+"Star" = "Star";
+"Spiral" = "Spiral";
+"Random" = "Random";
 "Radius" = "Radius";
 "px" = "px";
 "seconds" = "seconds";

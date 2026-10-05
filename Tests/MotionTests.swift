@@ -8,12 +8,21 @@ enum MotionTests {
         for pattern in Motion.patterns {
             let path = Motion.offsets(pattern: pattern, radius: radius)
             assert(!path.isEmpty, "\(pattern) must produce a path")
-            assert(path.last == .zero, "\(pattern) must bring the cursor back to where it started")
+            if Motion.returnsHome(pattern) {
+                assert(path.last == .zero, "\(pattern) must bring the cursor back to where it started")
+            } else {
+                assert(path.last != .zero, "\(pattern) must leave the cursor somewhere new")
+                assert(hypot(path.last!.x, path.last!.y) > 0.5, "\(pattern) must not land back on the start")
+            }
             let reach = path.map { hypot($0.x, $0.y) }.max() ?? 0
             assert(reach > 0.5, "\(pattern) must actually move the cursor")
             assert(reach <= radius * 1.5, "\(pattern) must stay near its radius, got \(reach)")
             assert(path.count >= 2, "\(pattern) needs at least a departure and a return")
         }
+
+        assert(Motion.returnsHome("random") == false, "the random walk ends somewhere new")
+        assert(Motion.returnsHome("circle"), "shapes come back home")
+        assert(Motion.returnsHome("zigzag"), "an unknown pattern behaves like the jiggle and comes home")
 
         assert(Motion.offsets(pattern: Motion.defaultPattern, radius: 7) == [CGPoint(x: 7, y: 0), .zero],
                "the jiggle nudge is a fixed offset and back")
@@ -33,6 +42,38 @@ enum MotionTests {
         assert(square.allSatisfy { abs(abs($0.x) - radius) < 0.001 || abs(abs($0.y) - radius) < 0.001 },
                "every square point lies on an edge")
 
+        let triangle = Motion.trianglePoints(radius: radius)
+        assert(triangle.first!.x == 0 && triangle.first!.y == radius,
+               "the triangle starts above the cursor")
+        let corners = Set(triangle.map { "\(Int(round($0.x))),\(Int(round($0.y)))" })
+        assert(corners.contains("0,40") && corners.contains("35,-20") && corners.contains("-35,-20"),
+               "the triangle has three corners at the radius")
+        assert(triangle.allSatisfy { hypot($0.x, $0.y) <= radius + 0.001 },
+               "the triangle stays inside its radius")
+
+        let star = Motion.starPoints(radius: radius)
+        let starReach = star.map { hypot($0.x, $0.y) }
+        assert(abs(starReach.max()! - radius) < 0.001, "the star has spikes at the radius")
+        assert(starReach.min()! < radius * 0.5, "the star has points pulled inwards")
+        assert(star.contains { abs($0.x) < 0.001 && $0.y > radius * 0.99 }, "the star points up first")
+
+        let spiral = Motion.spiralPoints(radius: radius)
+        assert(spiral.first == .zero && spiral.last == .zero, "the spiral leaves and returns to the centre")
+        assert(abs(spiral.map { hypot($0.x, $0.y) }.max()! - radius) < 0.001, "the spiral reaches its radius")
+
+        var randomEnds = Set<String>()
+        for _ in 0..<20 {
+            let path = Motion.offsets(pattern: "random", radius: radius)
+            let end = path.last!
+            assert(end != .zero, "the random walk never ends on the starting point")
+            assert(hypot(end.x, end.y) >= radius * 0.6 - 0.001,
+                   "the random walk lands a clear distance from the start")
+            assert(path.map { hypot($0.x, $0.y) }.max()! <= radius + 0.001,
+                   "the random walk stays inside its radius")
+            randomEnds.insert("\(Int(round(end.x))),\(Int(round(end.y)))")
+        }
+        assert(randomEnds.count > 1, "the random walk is not the same every time")
+
         let eight = Motion.figureEightPoints(radius: radius)
         assert(eight.first == .zero && eight.last == .zero, "the figure eight starts and ends at the cursor")
         assert(eight.contains { $0.x >= radius } && eight.contains { $0.x <= -radius },
@@ -43,7 +84,7 @@ enum MotionTests {
         assert(drawn.contains(circle.first!), "the drawn circle reaches its own edge")
         assert(drawn.first != circle.first, "the cursor glides into the shape instead of jumping to it")
 
-        assert(Motion.offsets(pattern: "spiral", radius: radius) == Motion.offsets(pattern: "jiggle", radius: radius),
+        assert(Motion.offsets(pattern: "zigzag", radius: radius) == Motion.offsets(pattern: "jiggle", radius: radius),
                "an unknown pattern falls back to the jiggle")
         assert(Motion.offsets(pattern: "circle", radius: 0).map { hypot($0.x, $0.y) }.max()! <= 2,
                "a radius below the floor is clamped up, not down to nothing")
@@ -68,7 +109,7 @@ enum MotionTests {
         assert(legacy.motionPattern == "jiggle" && legacy.motionRadiusPixels == 40,
                "a config written before the patterns still decodes")
 
-        config.motionPattern = "spiral"
+        config.motionPattern = "zigzag"
         config.motionRadiusPixels = 9000
         let fixed = config.sanitized()
         assert(fixed.motionPattern == "jiggle", "an unknown pattern is dropped")
