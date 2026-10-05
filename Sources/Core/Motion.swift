@@ -10,8 +10,11 @@ enum Motion {
     static let stepDelayMicroseconds: UInt32 = 8_000
     static let glideSteps = 6
 
+    static let wanderingPatterns = [defaultPattern, randomPattern]
+
     static func returnsHome(_ pattern: String) -> Bool {
-        patterns.contains(pattern) ? pattern != randomPattern : true
+        guard patterns.contains(pattern) else { return false }
+        return !wanderingPatterns.contains(pattern)
     }
 
     static func clampRadius(_ radius: Double) -> Double {
@@ -42,7 +45,7 @@ enum Motion {
         case "star": return closed(starPoints(radius: size))
         case "spiral": return closed(spiralPoints(radius: size))
         case "random": return randomOffsets(radius: size)
-        default: return [CGPoint(x: size, y: 0), .zero]
+        default: return jiggleOffsets(distance: size)
         }
     }
 
@@ -56,13 +59,34 @@ enum Motion {
         CGPoint(x: abs(x) < 1e-9 ? 0 : x, y: abs(y) < 1e-9 ? 0 : y)
     }
 
-    private static func glide(from start: CGPoint, to end: CGPoint) -> [CGPoint] {
-        guard hypot(end.x - start.x, end.y - start.y) > 0.5 else { return [] }
-        return (1...glideSteps).map { step in
-            let progress = Double(step) / Double(glideSteps)
+    private static func glide(from start: CGPoint, to end: CGPoint, steps: Int = glideSteps) -> [CGPoint] {
+        guard steps > 0, hypot(end.x - start.x, end.y - start.y) > 0.5 else { return [] }
+        return (1...steps).map { step in
+            let progress = Double(step) / Double(steps)
             return CGPoint(x: start.x + (end.x - start.x) * progress,
                            y: start.y + (end.y - start.y) * progress)
         }
+    }
+
+    private static func bowedGlide(from start: CGPoint, to end: CGPoint, bow: Double, inside limit: Double) -> [CGPoint] {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let length = hypot(dx, dy)
+        guard length > 0.5 else { return [] }
+        let steps = Int.random(in: 3...9)
+        let normal = CGPoint(x: -dy / length, y: dx / length)
+        return (1...steps).map { step in
+            let progress = Double(step) / Double(steps)
+            let bulge = sin(Double.pi * progress) * bow
+            return within(limit, CGPoint(x: start.x + dx * progress + normal.x * bulge,
+                                         y: start.y + dy * progress + normal.y * bulge))
+        }
+    }
+
+    private static func within(_ limit: Double, _ location: CGPoint) -> CGPoint {
+        let distance = hypot(location.x, location.y)
+        guard distance > limit, distance > 0 else { return location }
+        return CGPoint(x: location.x / distance * limit, y: location.y / distance * limit)
     }
 
     static func circlePoints(radius: Double) -> [CGPoint] {
@@ -137,20 +161,31 @@ enum Motion {
         }
     }
 
+    static func jiggleOffsets(distance: Double) -> [CGPoint] {
+        guard distance.isFinite, distance > 0 else { return [.zero] }
+        let angle = Double.random(in: 0..<(2 * Double.pi))
+        let reach = Double.random(in: (distance * 0.6)...distance)
+        let target = point(reach * cos(angle), reach * sin(angle))
+        let bow = Double.random(in: -1...1) * distance * 0.3
+        let path = bowedGlide(from: .zero, to: target, bow: bow, inside: distance)
+        return path.isEmpty ? [target] : path
+    }
+
     static func randomOffsets(radius: Double) -> [CGPoint] {
-        let stops = 3
+        let stops = Int.random(in: 6...10)
         var path: [CGPoint] = []
         var current = CGPoint.zero
-        var target = CGPoint(x: radius, y: 0)
         for index in 0..<stops {
             let angle = Double.random(in: 0..<(2 * Double.pi))
-            let reach = Double.random(in: (index == stops - 1 ? radius * 0.6 : radius * 0.3)...radius)
+            let reach = index == stops - 1
+                ? Double.random(in: (radius * 0.6)...radius)
+                : Double.random(in: (radius * 0.2)...radius)
             let next = point(reach * cos(angle), reach * sin(angle))
-            path += glide(from: current, to: next)
+            path += bowedGlide(from: current, to: next,
+                               bow: Double.random(in: -1...1) * radius * 0.3, inside: radius)
             current = next
-            target = next
         }
-        if path.last != target { path.append(target) }
+        if path.last != current { path.append(current) }
         return path
     }
 }
@@ -167,15 +202,11 @@ func drawMotion(pattern: String, radius: Double, stateID: CGEventSourceStateID?)
         Log.error("motion: cannot read cursor position")
         return false
     }
-    let bounds = activeDisplayBounds(containing: start)
     let source = stateID.flatMap { CGEventSource(stateID: $0) }
-    for offset in Motion.offsets(pattern: pattern, radius: radius) {
-        var point = CGPoint(x: start.x + offset.x, y: start.y + offset.y)
-        if let bounds { point = clampToDisplay(point, bounds: bounds) }
-        postMouseMove(to: point, source: source)
-        usleep(Motion.stepDelayMicroseconds)
+    guard postWalk(Motion.offsets(pattern: pattern, radius: radius), from: start, stateID: stateID) else {
+        return false
     }
-    postMouseMove(to: start, source: source)
+    if Motion.returnsHome(pattern) { postMouseMove(to: start, source: source) }
     return true
 }
 

@@ -17,15 +17,30 @@ enum MotionTests {
             let reach = path.map { hypot($0.x, $0.y) }.max() ?? 0
             assert(reach > 0.5, "\(pattern) must actually move the cursor")
             assert(reach <= radius * 1.5, "\(pattern) must stay near its radius, got \(reach)")
-            assert(path.count >= 2, "\(pattern) needs at least a departure and a return")
+            assert(path.count >= 2, "\(pattern) needs more than a single point")
         }
 
         assert(Motion.returnsHome("random") == false, "the random walk ends somewhere new")
+        assert(Motion.returnsHome(Motion.defaultPattern) == false, "the jiggle ends somewhere new as well")
         assert(Motion.returnsHome("circle"), "shapes come back home")
-        assert(Motion.returnsHome("zigzag"), "an unknown pattern behaves like the jiggle and comes home")
+        assert(Motion.returnsHome("zigzag") == false, "an unknown pattern wanders like the jiggle")
 
-        assert(Motion.offsets(pattern: Motion.defaultPattern, radius: 7) == [CGPoint(x: 7, y: 0), .zero],
-               "the jiggle nudge is a fixed offset and back")
+        let nudge = Motion.jiggleOffsets(distance: 7)
+        assert(nudge.last != .zero, "the jiggle must not land back on the start")
+        assert(nudge.map { hypot($0.x, $0.y) }.max()! <= 7.001, "the jiggle stays inside its distance")
+        assert(hypot(nudge.last!.x, nudge.last!.y) >= 7 * 0.6 - 0.001,
+               "the jiggle drifts a visible part of its distance")
+        assert(nudge.count >= 2, "the jiggle walks out instead of jumping")
+        var jiggleEnds = Set<String>()
+        for _ in 0..<20 {
+            let end = Motion.jiggleOffsets(distance: 7).last!
+            assert(end != .zero, "the jiggle never ends on the starting point")
+            jiggleEnds.insert("\(Int(round(end.x))),\(Int(round(end.y)))")
+        }
+        assert(jiggleEnds.count > 1, "the jiggle is not the same drift every time")
+        assert(Motion.jiggleOffsets(distance: 0) == [.zero], "a zero distance still posts a move")
+        assert(Motion.offsets(pattern: Motion.defaultPattern, radius: 7).last != .zero,
+               "the jiggle in the panel is as random as the engine one")
 
         let circle = Motion.circlePoints(radius: radius)
         for point in circle {
@@ -61,6 +76,10 @@ enum MotionTests {
         assert(spiral.first == .zero && spiral.last == .zero, "the spiral leaves and returns to the centre")
         assert(abs(spiral.map { hypot($0.x, $0.y) }.max()! - radius) < 0.001, "the spiral reaches its radius")
 
+        let tourCounts = (0..<10).map { _ in Motion.offsets(pattern: "random", radius: radius).count }
+        let averageTour = tourCounts.reduce(0, +) / tourCounts.count
+        assert(averageTour >= 24, "the random tour is a long walk, averaging \(averageTour) points")
+
         var randomEnds = Set<String>()
         for _ in 0..<20 {
             let path = Motion.offsets(pattern: "random", radius: radius)
@@ -84,8 +103,10 @@ enum MotionTests {
         assert(drawn.contains(circle.first!), "the drawn circle reaches its own edge")
         assert(drawn.first != circle.first, "the cursor glides into the shape instead of jumping to it")
 
-        assert(Motion.offsets(pattern: "zigzag", radius: radius) == Motion.offsets(pattern: "jiggle", radius: radius),
-               "an unknown pattern falls back to the jiggle")
+        let fallback = Motion.offsets(pattern: "zigzag", radius: 12)
+        assert(fallback.last != .zero, "an unknown pattern wanders like the jiggle")
+        assert(fallback.map { hypot($0.x, $0.y) }.max()! <= 12.001,
+               "an unknown pattern stays inside the size it was handed")
         assert(Motion.offsets(pattern: "circle", radius: 0).map { hypot($0.x, $0.y) }.max()! <= 2,
                "a radius below the floor is clamped up, not down to nothing")
         assert(Motion.offsets(pattern: "circle", radius: 10_000).map { hypot($0.x, $0.y) }.max()! <= 300,
