@@ -39,7 +39,7 @@ struct Config: Codable, Equatable {
     static let `default` = Config(
         intervalSeconds: [45, 90],
         idleThresholdSeconds: 40,
-        jiggleDistancePixels: 2,
+        jiggleDistancePixels: Motion.defaultJiggleDistancePixels,
         motionPattern: Motion.defaultPattern,
         motionRadiusPixels: Motion.defaultRadiusPixels,
         preventDisplaySleep: true,
@@ -69,7 +69,7 @@ struct Config: Codable, Equatable {
             || config.intervalSeconds[1] < config.intervalSeconds[0] {
             config.intervalSeconds = Config.default.intervalSeconds
         }
-        config.jiggleDistancePixels = max(0, config.jiggleDistancePixels)
+        config.jiggleDistancePixels = Motion.clampDistance(config.jiggleDistancePixels)
         if !Motion.patterns.contains(config.motionPattern) { config.motionPattern = Motion.defaultPattern }
         config.motionRadiusPixels = Motion.clampRadius(config.motionRadiusPixels)
         config.idleThresholdSeconds = max(0, config.idleThresholdSeconds)

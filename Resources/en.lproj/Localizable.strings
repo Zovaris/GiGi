@@ -76,7 +76,12 @@
 "Circle" = "Circle";
 "Square" = "Square";
 "Figure eight" = "Figure eight";
+"Triangle" = "Triangle";
+"Star" = "Star";
+"Spiral" = "Spiral";
+"Random" = "Random";
 "Radius" = "Radius";
+"Distance" = "Distance";
 "px" = "px";
 "seconds" = "seconds";
 "Could not write the configuration file" = "Could not write the configuration file";

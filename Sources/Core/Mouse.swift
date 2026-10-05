@@ -117,21 +117,24 @@ func scrollMouse(_ mode: String, stateID: CGEventSourceStateID?) -> Bool {
 }
 
 @discardableResult
+func postWalk(_ offsets: [CGPoint], from start: CGPoint, stateID: CGEventSourceStateID?) -> Bool {
+    guard !offsets.isEmpty else { return false }
+    let source = stateID.flatMap { CGEventSource(stateID: $0) }
+    let bounds = activeDisplayBounds(containing: start)
+    for offset in offsets {
+        var point = CGPoint(x: start.x + offset.x, y: start.y + offset.y)
+        if let bounds { point = clampToDisplay(point, bounds: bounds) }
+        postMouseMove(to: point, source: source)
+        usleep(Motion.stepDelayMicroseconds)
+    }
+    return true
+}
+
+@discardableResult
 func jiggle(distance: Double, stateID: CGEventSourceStateID?) -> Bool {
-    guard let current = CGEvent(source: nil)?.location else {
+    guard let start = CGEvent(source: nil)?.location else {
         Log.error("jiggle: cannot read cursor position")
         return false
     }
-    var dx = distance
-    if let bounds = activeDisplayBounds(containing: current) {
-        let margin = 4.0
-        if current.x + dx > bounds.maxX - margin || current.x + dx < bounds.minX + margin {
-            dx = -dx
-        }
-    }
-    let source = stateID.flatMap { CGEventSource(stateID: $0) }
-    postMouseMove(to: CGPoint(x: current.x + dx, y: current.y), source: source)
-    usleep(60_000)
-    postMouseMove(to: current, source: source)
-    return true
+    return postWalk(Motion.jiggleOffsets(distance: distance), from: start, stateID: stateID)
 }

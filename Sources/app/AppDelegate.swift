@@ -410,9 +410,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let window = String(format: L("After %.0fs idle · every %.0f–%.0fs"),
                             engine.config.idleThresholdSeconds,
                             engine.config.intervalSeconds[0], engine.config.intervalSeconds[1])
-        panel.intervalSummary = engine.config.motionPattern == Motion.defaultPattern
-            ? window
-            : Motion.label(engine.config.motionPattern) + " · " + window
+        panel.intervalSummary = Motion.label(engine.config.motionPattern) + " · " + window
 
         let indicator = StatusIcon.state(for: status)
         statusItem.button?.image = StatusIcon.image(for: indicator)
@@ -580,6 +578,7 @@ private extension AppDelegate {
         panel.intervalHigh = engine.config.intervalSeconds[1]
         panel.motionPattern = engine.config.motionPattern
         panel.motionRadius = engine.config.motionRadiusPixels
+        panel.jiggleDistance = engine.config.jiggleDistancePixels
         panel.clickMode = engine.config.clickMode
         panel.scrollMode = engine.config.scrollMode
         panel.dimWhileActive = engine.config.dimWhileActive
@@ -769,6 +768,7 @@ private extension AppDelegate {
         config.motionPattern = Motion.patterns.contains(panel.motionPattern)
             ? panel.motionPattern : Motion.defaultPattern
         config.motionRadiusPixels = Motion.clampRadius(panel.motionRadius)
+        config.jiggleDistancePixels = Motion.clampDistance(panel.jiggleDistance)
         config.clickMode = panel.clickMode
         config.scrollMode = panel.scrollMode
         engine.apply(config: config)

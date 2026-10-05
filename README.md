@@ -103,7 +103,11 @@ The default configuration file is `~/.config/gigi/config.json`. A starter file i
 }
 ```
 
-Patterns are `jiggle`, `circle`, `square`, and `figureEight`. Schedule windows may cross midnight.
+Patterns are `jiggle`, `circle`, `square`, `figureEight`, `triangle`, `star`, `spiral`, and
+`random`. The shapes walk back to where the cursor started, so they leave it where they found it.
+`jiggle` and `random` are random walks that deliberately end somewhere new: the jiggle drifts up to
+`jiggleDistancePixels` from the previous position, and `random` takes a longer tour of the whole
+radius before stopping. Schedule windows may cross midnight.
 The app edits its configuration when you change settings in the panel; after editing the file by
 hand, reload the app or restart the LaunchAgent:
 

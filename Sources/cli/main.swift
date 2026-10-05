@@ -27,8 +27,9 @@ func usage() {
       --config PATH           config JSON (default ~/.config/gigi/config.json)
       --interval-min S        minimum seconds between moves (default 45)
       --interval-max S        maximum seconds between moves (default 90)
-      --distance PX           cursor offset in pixels for the jiggle (default 2)
-      --pattern NAME          cursor path: jiggle|circle|square|figureEight (default jiggle)
+      --distance PX           how far the random jiggle drifts in pixels (default 2)
+      --pattern NAME          cursor path: jiggle|circle|square|figureEight|triangle
+                              |star|spiral|random (default jiggle)
       --radius PX             size of the drawn path, 2-300 (default 40)
       --idle-threshold S      only move when the user has been idle for S seconds (default 40)
       --click MODE            extra click per move: none|single|double|right
