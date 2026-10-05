@@ -39,6 +39,10 @@ enum MotionTests {
         }
         assert(jiggleEnds.count > 1, "the jiggle is not the same drift every time")
         assert(Motion.jiggleOffsets(distance: 0) == [.zero], "a zero distance still posts a move")
+        assert(Motion.clampDistance(2.4) == 2 && Motion.clampDistance(900) == 300,
+               "the jiggle distance is clamped to 0...300")
+        assert(Motion.clampDistance(.nan) == Motion.defaultJiggleDistancePixels,
+               "a broken distance falls back to the default")
         assert(Motion.offsets(pattern: Motion.defaultPattern, radius: 7).last != .zero,
                "the jiggle in the panel is as random as the engine one")
 

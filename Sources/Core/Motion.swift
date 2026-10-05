@@ -7,6 +7,8 @@ enum Motion {
     static let randomPattern = "random"
     static let defaultRadiusPixels: Double = 40
     static let radiusRange: ClosedRange<Double> = 2...300
+    static let defaultJiggleDistancePixels: Double = 2
+    static let distanceRange: ClosedRange<Double> = 0...300
     static let stepDelayMicroseconds: UInt32 = 8_000
     static let glideSteps = 6
 
@@ -20,6 +22,11 @@ enum Motion {
     static func clampRadius(_ radius: Double) -> Double {
         guard radius.isFinite else { return defaultRadiusPixels }
         return min(radiusRange.upperBound, max(radiusRange.lowerBound, radius.rounded()))
+    }
+
+    static func clampDistance(_ distance: Double) -> Double {
+        guard distance.isFinite else { return defaultJiggleDistancePixels }
+        return min(distanceRange.upperBound, max(distanceRange.lowerBound, distance.rounded()))
     }
 
     static func label(_ pattern: String) -> String {

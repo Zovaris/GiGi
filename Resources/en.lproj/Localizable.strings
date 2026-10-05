@@ -81,6 +81,7 @@
 "Spiral" = "Spiral";
 "Random" = "Random";
 "Radius" = "Radius";
+"Distance" = "Distance";
 "px" = "px";
 "seconds" = "seconds";
 "Could not write the configuration file" = "Could not write the configuration file";

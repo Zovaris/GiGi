@@ -60,6 +60,7 @@ final class PanelModel: ObservableObject {
     @Published var intervalHigh: Double = 90
     @Published var motionPattern = Motion.defaultPattern
     @Published var motionRadius = Motion.defaultRadiusPixels
+    @Published var jiggleDistance = Motion.defaultJiggleDistancePixels
     @Published var clickMode = "none"
     @Published var scrollMode = "none"
     @Published var dimWhileActive = false
@@ -606,7 +607,13 @@ struct PanelView: View {
                         }
                     }
                 }
-                if model.motionPattern != Motion.defaultPattern {
+                if model.motionPattern == Motion.defaultPattern {
+                    RowDivider()
+                    SettingRow(title: L("Distance"), symbol: "arrow.left.and.right") {
+                        NumberField(value: $model.jiggleDistance, range: Motion.distanceRange, commit: model.movementChanged)
+                        unit(L("px"))
+                    }
+                } else {
                     RowDivider()
                     SettingRow(title: L("Radius"), symbol: "circle.dashed") {
                         NumberField(value: $model.motionRadius, range: Motion.radiusRange, commit: model.movementChanged)
