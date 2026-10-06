@@ -3,6 +3,14 @@
 Newest first. Versions match the `vX.Y.Z` tags and the app's `Info.plist`; dates are ISO 8601.
 Cut a release with `make version`, which writes the section for you.
 
+## 1.0.0 - 2026-10-05
+
+**Added**
+
+- Show the pattern in the summary and edit the jiggle distance in the panel
+- Make the jiggle a random drift and take a longer random tour
+- Add triangle, star, spiral and random movement patterns
+
 ## 0.4.3 - 2026-10-04
 
 - Maintenance release
